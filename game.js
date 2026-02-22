@@ -9,6 +9,10 @@ let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
 let selectedCharId = 0;
 let controlMode = 'pc'; 
 
+// --- NOME GIOCATORE ---
+let savedName = localStorage.getItem('survivorPlayerName') || "";
+let activePlayerName = "Eroe";
+
 let chestImg = new Image(); chestImg.src = 'chest.png';
 
 let joyX = 0, joyY = 0;
@@ -22,11 +26,7 @@ let keys = {};
 window.addEventListener('keydown', e => {
     let key = e.key.toLowerCase();
     keys[key] = true;
-    
-    // NUOVO: Scorciatoie per la Pausa da tastiera (P o Esc)
-    if (key === 'p' || e.key === 'Escape') {
-        togglePause();
-    }
+    if (key === 'p' || e.key === 'Escape') togglePause();
 }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
@@ -50,32 +50,29 @@ let player = {};
 let enemies = []; let bullets = []; let enemyBullets = []; let gems = []; let rocks = []; let chests = [];
 let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendingWeapon = null;
 
+// --- GESTIONE NOME ---
+function savePlayerName() {
+    let inputVal = document.getElementById('player-name-input').value.trim();
+    localStorage.setItem('survivorPlayerName', inputVal);
+    savedName = inputVal;
+}
+
 // --- GESTIONE PAUSA ---
 function togglePause() {
     if (gameState !== "PLAYING") return;
-    
-    // Non permette la pausa se c'è un altro menu aperto (Level Up, Boss, Sostituzione arma)
     let lvlModal = document.getElementById('levelup-modal').style.display;
     let bossModal = document.getElementById('boss-modal').style.display;
     let repModal = document.getElementById('replace-modal').style.display;
     if (lvlModal === 'block' || bossModal === 'block' || repModal === 'block') return;
 
     let pauseModal = document.getElementById('pause-modal');
-    if (paused) {
-        paused = false;
-        pauseModal.style.display = 'none';
-    } else {
-        paused = true;
-        pauseModal.style.display = 'block';
-    }
+    if (paused) { paused = false; pauseModal.style.display = 'none'; } 
+    else { paused = true; pauseModal.style.display = 'block'; }
 }
 
-// Funzione "Arrenditi" dal menu di pausa
 function surrender() {
     document.getElementById('pause-modal').style.display = 'none';
-    player.hp = 0;
-    updateBarsUI();
-    triggerGameOver();
+    player.hp = 0; updateBarsUI(); triggerGameOver();
 }
 
 function toggleControls() {
@@ -91,6 +88,7 @@ function showMenu() {
     document.getElementById('game-over-screen').style.display = 'none';
     document.getElementById('game-ui').style.display = 'none';
     canvas.style.display = 'none';
+    document.getElementById('player-name-input').value = savedName; // Carica il nome salvato
 }
 function backToMenu() { showMenu(); }
 
@@ -121,6 +119,9 @@ function showCharacterSelect() {
 
 function startGame() {
     gameState = "PLAYING";
+    savePlayerName(); // Salva se l'utente non ha cliccato fuori
+    activePlayerName = savedName !== "" ? savedName : "Eroe";
+
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('character-select').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'none';
@@ -406,8 +407,7 @@ function draw() {
         let o1x = player.x + Math.cos(player.orbAngle)*orbDist; let o1y = player.y + Math.sin(player.orbAngle)*orbDist;
         let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*orbDist; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*orbDist;
         ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white';
-        ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
     }
 
     player.miniMes.forEach(m => {
@@ -467,6 +467,13 @@ function draw() {
         let weaponX = screenCenterX + (index === 0 ? 35 : -35); let weaponY = screenCenterY;
         ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.beginPath(); ctx.arc(weaponX, weaponY, 18, 0, Math.PI*2); ctx.fill(); ctx.fillText(w.icon, weaponX, weaponY + 2);
     });
+
+    // --- DISEGNO NOME GIOCATORE ---
+    ctx.font = "bold 20px Arial";
+    ctx.fillStyle = "white";
+    ctx.shadowBlur = 5; ctx.shadowColor = "black";
+    ctx.fillText(activePlayerName, screenCenterX, screenCenterY - pBodyH/2 - player.size - 15);
+    ctx.shadowBlur = 0;
 
     if (chests.length > 0) {
         let closestChest = chests.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
