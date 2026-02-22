@@ -6,7 +6,7 @@ window.addEventListener('resize', resize); resize();
 let gameState = "MENU"; 
 let paused = false; let frameCount = 0;
 let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
-let cheatUnlocked = localStorage.getItem('survivorCheat') === 'true'; // NUOVO: Stato Trucco
+let cheatUnlocked = localStorage.getItem('survivorCheat') === 'true'; 
 let selectedCharId = 0;
 let controlMode = 'pc'; 
 let savedName = localStorage.getItem('survivorPlayerName') || "";
@@ -21,7 +21,6 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// NUOVA FUNZIONE MATEMATICA: Calcola distanza tra un punto e una linea (Serve per il Raggio Laser)
 function distToSegment(px, py, x1, y1, x2, y2) {
     let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     if (l2 === 0) return Math.hypot(px - x1, py - y1);
@@ -44,7 +43,7 @@ const WEAPONS_DB = {
     pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, weaponSize: 15, bulletSize: 5, color: "silver", muzzleOffset: 25 },
     fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, weaponSize: 22, bulletSize: 3, color: "white", muzzleOffset: 45 },
     bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, weaponSize: 25, bulletSize: 15, color: "#ff4500", muzzleOffset: 40 },
-    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 40, range: 1500, speed: 0, weaponSize: 20, bulletSize: 4, color: "lime", muzzleOffset: 35 }, // Raggio Gamma istantaneo lunghissimo
+    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 40, range: 1500, speed: 0, weaponSize: 20, bulletSize: 4, color: "lime", muzzleOffset: 35 }, 
     granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  weaponSize: 16, bulletSize: 12, color: "#888", muzzleOffset: 15 },
     razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, weaponSize: 25, bulletSize: 14, color: "orange", muzzleOffset: 55 },
     freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, weaponSize: 20, bulletSize: 10, color: "#aaddff", muzzleOffset: 25 }
@@ -62,7 +61,6 @@ let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendi
 
 function savePlayerName() { let inputVal = document.getElementById('player-name-input').value.trim(); localStorage.setItem('survivorPlayerName', inputVal); savedName = inputVal; }
 
-// --- GESTIONE IMPOSTAZIONI E CODICE SEGRETO ---
 function showSettings() { document.getElementById('settings-modal').style.display = 'block'; }
 function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 function checkCheatCode() {
@@ -72,9 +70,7 @@ function checkCheatCode() {
         localStorage.setItem('survivorCheat', 'true');
         alert("✔️ CODICE ACCETTATO!\nTutti i personaggi sono sbloccati.");
         closeSettings();
-    } else {
-        alert("❌ Codice errato.");
-    }
+    } else { alert("❌ Codice errato."); }
     document.getElementById('cheat-input').value = "";
 }
 
@@ -97,7 +93,6 @@ function showCharacterSelect() {
     document.getElementById('main-menu').style.display = 'none'; document.getElementById('character-select').style.display = 'flex';
     const container = document.getElementById('char-cards-container'); container.innerHTML = '';
     CHARACTERS.forEach(char => {
-        // Usa il cheat per sbloccare tutti!
         let isUnlocked = cheatUnlocked || maxLevelReached >= char.reqLevel; 
         let isSelected = selectedCharId === char.id;
         let wNames = char.weapons.map(w => WEAPONS_DB[w].name).join(", ");
@@ -150,7 +145,7 @@ function update() {
         enemies.forEach(e => { if (Math.hypot(e.x - m.x, e.y - m.y) < e.size + 10) m.hp -= 1; }); enemyBullets.forEach((b, bi) => { if (Math.hypot(b.x - m.x, b.y - m.y) < 15) { m.hp -= b.damage; enemyBullets.splice(bi, 1); } }); });
     player.miniMes = player.miniMes.filter(m => m.hp > 0); 
 
-    // --- LOGICA DI SPARO ---
+    // --- BALISTICA ARMI IMPUGNATE E RAGGIO LASER ---
     player.weapons.forEach((w, index) => {
         w.fireTimer++;
         if (w.fireTimer >= w.currentFireRate) {
@@ -158,7 +153,9 @@ function update() {
             if (targets.length > 0) {
                 let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
                 let angle = Math.atan2(closest.y - player.y, closest.x - player.x);
-                let handOffsetX = 15; let handOffsetY = (index === 0) ? 15 : -15; 
+                let handOffsetX = 15; 
+                let handOffsetY = (index === 0) ? 15 : -15; // 0 = Destra (+15 giù), 1 = Sinistra (-15 su)
+                
                 let cosA = Math.cos(angle); let sinA = Math.sin(angle);
                 let weaponBaseX = player.x + (handOffsetX * cosA - handOffsetY * sinA);
                 let weaponBaseY = player.y + (handOffsetX * sinA + handOffsetY * cosA);
@@ -166,9 +163,8 @@ function update() {
                 let spawnY = weaponBaseY + (w.muzzleOffset * sinA);
 
                 if (w.id === 'laser') {
-                    // LOGICA RAGGIO GAMMA ISTANTANEO
-                    let numBeams = w.level > 3 ? 3 : 1; // Multi-shot sopra il liv 3
-                    let spread = 0.2; // Divergenza dei raggi multipli
+                    let numBeams = w.level > 3 ? 3 : 1; 
+                    let spread = 0.2; 
                     for (let i = 0; i < numBeams; i++) {
                         let beamAngle = angle;
                         if (numBeams === 3) beamAngle = angle + (i - 1) * spread;
@@ -177,24 +173,17 @@ function update() {
                         let endX = spawnX + Math.cos(beamAngle) * w.range;
                         let endY = spawnY + Math.sin(beamAngle) * w.range;
 
-                        // Applica danni istantaneamente ai nemici sulla linea del raggio
                         enemies.forEach(e => {
                             if (e.hp > 0 && distToSegment(e.x, e.y, spawnX, spawnY, endX, endY) < e.size + 20) {
                                 e.hp -= w.currentDamage;
-                                if (e.hp <= 0 && !e.dead) {
-                                    e.dead = true; // Segna come morto per la pulizia successiva
-                                    if (e.type === 'miniboss') { chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true }); showItemFeedback("🏆 CASSA SUPREMA!", "gold"); } 
-                                    else { gems.push({ x: e.x, y: e.y, isSuper: false }); }
-                                }
+                                if (e.hp <= 0 && !e.dead) { e.dead = true; if (e.type === 'miniboss') { chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true }); showItemFeedback("🏆 CASSA SUPREMA!", "gold"); } else { gems.push({ x: e.x, y: e.y, isSuper: false }); } }
                             }
                         });
-                        // Applica danni alle rocce
                         rocks.forEach(r => {
                             if (r.hp > 0 && distToSegment(r.x, r.y, spawnX, spawnY, endX, endY) < r.size + 20) { r.hp -= w.currentDamage; if(r.hp <= 0 && !r.dead){ r.dead=true; gems.push({ x: r.x, y: r.y, isSuper: true }); } }
                         });
                     }
                 } else {
-                    // LOGICA PROIETTILE NORMALE
                     bullets.push({ 
                         x: spawnX, y: spawnY, startX: spawnX, startY: spawnY, 
                         vx: cosA * w.speed, vy: sinA * w.speed, 
@@ -206,16 +195,13 @@ function update() {
         }
     });
 
-    // Diminuisci vita raggi e rimuovi quelli finiti
-    beams.forEach(b => b.life--);
-    beams = beams.filter(b => b.life > 0);
+    beams.forEach(b => b.life--); beams = beams.filter(b => b.life > 0);
 
     for (let i = bullets.length - 1; i >= 0; i--) { let b = bullets[i]; b.x += b.vx; b.y += b.vy; if (Math.hypot(b.x - b.startX, b.y - b.startY) > b.range) { bullets.splice(i, 1); continue; } for (let ri = rocks.length - 1; ri >= 0; ri--) { let r = rocks[ri]; if (Math.hypot(b.x - r.x, b.y - r.y) < r.size + b.size/2) { r.hp -= b.damage; bullets.splice(i, 1); if (r.hp <= 0 && !r.dead) { r.dead=true; gems.push({ x: r.x, y: r.y, isSuper: true }); } break; } } }
     for (let i = enemyBullets.length - 1; i >= 0; i--) { let b = enemyBullets[i]; b.x += b.vx; b.y += b.vy; if (Math.hypot(b.x - player.x, b.y - player.y) > 1500) { enemyBullets.splice(i, 1); continue; } let hitRock = false; for (let r of rocks) { if (Math.hypot(b.x - r.x, b.y - r.y) < r.size) { hitRock = true; break; } } if(hitRock) { enemyBullets.splice(i, 1); continue; } if (Math.hypot(b.x - player.x, b.y - player.y) < player.size + 5) { damagePlayer(b.damage); enemyBullets.splice(i, 1); } }
     if (Math.random() < 0.0008 && chests.length < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false }); }
     for (let i = chests.length - 1; i >= 0; i--) { let c = chests[i]; if (Math.hypot(player.x - c.x, player.y - c.y) < player.size + c.size) { chests.splice(i, 1); if (c.isSpecial) { showBossRelicModal(); } else { let rand = Math.random(); if (rand < 0.4) { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); updateBarsUI(); showItemFeedback("✚ CURA", "#00ff00"); } else if (rand < 0.7) { let sd = Math.max(canvas.width, canvas.height); enemies.forEach(e => { if(Math.hypot(e.x - player.x, e.y - player.y) < sd) { if (e.type !== 'miniboss') e.hp -= 10000; else e.hp -= 500; } }); showItemFeedback("💣 BOMBA!", "#ff4500"); } else { showItemFeedback("⬆️ POTENZIAMENTO!", "#ffff00"); freeUpgrade(); } } } }
     
-    // Pulizia Rocce (Anche per raggi)
     for (let i = rocks.length - 1; i >= 0; i--) { if(rocks[i].dead) { rocks.splice(i,1); } else if (Math.hypot(player.x - rocks[i].x, player.y - rocks[i].y) > 2000) rocks.splice(i, 1); }
     while(rocks.length < 15) { let valid = false; let attempts = 0; let rx, ry, rSize; while(!valid && attempts < 10) { let angle = Math.random() * Math.PI * 2; rx = player.x + Math.cos(angle) * (1000 + Math.random() * 500); ry = player.y + Math.sin(angle) * (1000 + Math.random() * 500); rSize = 25 + Math.random() * 20; valid = isPositionFree(rx, ry, rSize); attempts++; } if (valid) rocks.push({ x: rx, y: ry, size: rSize, hp: 30 }); }
     
@@ -223,7 +209,7 @@ function update() {
     
     for (let ei = enemies.length - 1; ei >= 0; ei--) { 
         let e = enemies[ei]; 
-        if (e.dead) { enemies.splice(ei, 1); continue; } // Pulizia per uccisioni raggio laser
+        if (e.dead) { enemies.splice(ei, 1); continue; } 
         if (Math.hypot(player.x - e.x, player.y - e.y) > 2500) { enemies.splice(ei, 1); continue; } 
         let dx = player.x - e.x; let dy = player.y - e.y; let angle = Math.atan2(dy, dx); e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed; 
         if (e.type === 'shooter') { e.fireTimer++; if (e.fireTimer >= 100) { enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*5, vy: Math.sin(angle)*5, damage: 10 }); e.fireTimer = 0; } } 
@@ -266,32 +252,17 @@ function draw() {
 
     bullets.forEach(b => { drawProjectile(b, camX, camY); });
 
-    // --- DISEGNO RAGGI GAMMA (LASER) ---
     beams.forEach(b => {
-        ctx.save();
-        let alpha = b.life / b.maxLife;
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = b.color;
-        ctx.lineWidth = 15 * alpha;
-        ctx.lineCap = "round";
-        ctx.shadowBlur = 20; ctx.shadowColor = b.color;
-        
-        ctx.beginPath();
-        ctx.moveTo(b.x - camX, b.y - camY);
-        ctx.lineTo(b.x - camX + Math.cos(b.angle)*b.range, b.y - camY + Math.sin(b.angle)*b.range);
-        ctx.stroke();
-        
-        // Nucleo bianco del raggio
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 5 * alpha;
-        ctx.stroke();
-        ctx.restore();
+        ctx.save(); let alpha = b.life / b.maxLife; ctx.globalAlpha = alpha; ctx.strokeStyle = b.color; ctx.lineWidth = 15 * alpha; ctx.lineCap = "round"; ctx.shadowBlur = 20; ctx.shadowColor = b.color;
+        ctx.beginPath(); ctx.moveTo(b.x - camX, b.y - camY); ctx.lineTo(b.x - camX + Math.cos(b.angle)*b.range, b.y - camY + Math.sin(b.angle)*b.range); ctx.stroke();
+        ctx.strokeStyle = "white"; ctx.lineWidth = 5 * alpha; ctx.stroke(); ctx.restore();
     });
 
     enemies.forEach(e => { let bx = e.x - camX; let by = e.y - camY; let armColor = '#8b0000'; if(e.type === 'miniboss') armColor = '#b8860b'; else if(e.type === 'tank') armColor = '#5a0000'; else if(e.type === 'shooter') armColor = '#4b0082'; if(e.type === 'miniboss') { ctx.shadowBlur = 20; ctx.shadowColor = 'gold'; } let armOffset = Math.sin(frameCount * 0.05 + e.x) * (e.size * 0.5); let bodyW = e.size * 0.8; let bodyH = e.size * 1.2; let armW = e.size * 1.0; let armH = e.size * 1.8; ctx.fillStyle = armColor; ctx.fillRect(bx - bodyW/2 - armW + 2, by - bodyH/2 + armOffset, armW, armH); ctx.fillRect(bx + bodyW/2 - 2, by - bodyH/2 - armOffset, armW, armH); if(e.type === 'shooter') { ctx.fillStyle = '#555'; let handY = by - bodyH/2 - armOffset + armH - 4; ctx.fillRect(bx + bodyW/2 + armW/2, handY, e.size*1.5, 5); ctx.fillRect(bx + bodyW/2 + armW/2, handY, 5, 10); } ctx.fillStyle = e.color; ctx.fillRect(bx - bodyW/2, by - bodyH/2, bodyW, bodyH); ctx.beginPath(); ctx.arc(bx, by - bodyH/2 - e.size*0.3, e.size * 0.9, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; if(e.type === 'miniboss') { ctx.fillStyle = 'black'; ctx.fillRect(bx - 40, by - e.size*2.5, 80, 8); ctx.fillStyle = 'red'; ctx.fillRect(bx - 40, by - e.size*2.5, 80 * (Math.max(0, e.hp)/e.maxHp), 8); } });
 
     let screenCenterX = canvas.width / 2; let screenCenterY = canvas.height / 2;
     
+    // --- DISEGNO ARMI IMPUGNATE NELLE MANI ---
     player.weapons.forEach((w, index) => {
         let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range);
         let angle = 0;
@@ -302,8 +273,11 @@ function draw() {
         ctx.save();
         ctx.translate(screenCenterX, screenCenterY);
         ctx.rotate(angle);
+        
+        // Destra (0) = giù (+15), Sinistra (1) = su (-15)
         let handOffsetY = (index === 0) ? 15 : -15; 
         ctx.translate(15, handOffsetY); 
+        
         if (WEAPON_MODELS[w.id]) { WEAPON_MODELS[w.id](ctx, w.weaponSize, w.color); }
         ctx.restore();
     });
