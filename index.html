@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survivor-like: Pausa Fixata</title>
+    <title>Survivor-like: Registrazione Nome</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="main-menu" class="fullscreen-menu">
         <h1 class="game-title">GEOMETRIC<br>SURVIVOR</h1>
+        
+        <input type="text" id="player-name-input" placeholder="INSERISCI NOME..." maxlength="12" onkeyup="savePlayerName()" onblur="savePlayerName()">
+        
         <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
         <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
         <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">🕹️ CONTROLLI: PC</button>
@@ -47,7 +50,6 @@
         </div>
         
         <button id="pause-btn" onclick="togglePause()">⏸️</button>
-        
         <div id="xp-bar-container"><div id="xp-bar"></div></div>
         
         <div id="joystick-zone" style="display: none;">
