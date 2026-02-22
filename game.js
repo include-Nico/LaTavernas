@@ -34,7 +34,19 @@ function distToSegment(px, py, x1, y1, x2, y2) {
 const WEAPON_MODELS = {
     pistola: (ctx, s, bulletColor) => { ctx.fillStyle = "#bbbbbb"; ctx.fillRect(0, -s/4, s*1.5, s/2); ctx.fillStyle = "#444444"; ctx.fillRect(0, s/4, s/2, s/1.5); },
     fucile: (ctx, s, bulletColor) => { ctx.fillStyle = "#333333"; ctx.fillRect(0, -s/6, s*2, s/3); ctx.fillStyle = "#111111"; ctx.fillRect(s, -s/2, s/4, s/3); ctx.fillStyle = "#5c3a21"; ctx.fillRect(-s/2, s/6, s, s/2.5); },
-    bastone: (ctx, s, bulletColor) => { ctx.fillStyle = "#8B4513"; ctx.fillRect(0, -s/8, s*1.5, s/4); ctx.fillStyle = bulletColor; ctx.shadowBlur = 10; ctx.shadowColor = bulletColor; ctx.beginPath(); ctx.arc(s*1.5, 0, s/1.5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; },
+    bastone: (ctx, s, bulletColor) => { 
+        ctx.fillStyle = "#8B4513"; 
+        // MODIFICATO: Stecca più lunga (s*2.5) e leggermente più sottile (s/5)
+        ctx.fillRect(0, -s/10, s*2.5, s/5); 
+        ctx.fillStyle = bulletColor; 
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = bulletColor; 
+        ctx.beginPath(); 
+        // MODIFICATO: Cerchio spostato alla fine (s*2.5) e più piccolo (s/2.5)
+        ctx.arc(s*2.5, 0, s/2.5, 0, Math.PI*2); 
+        ctx.fill(); 
+        ctx.shadowBlur = 0; 
+    },
     laser: (ctx, s, bulletColor) => { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, -s/3, s*1.5, s/1.5); ctx.fillStyle = bulletColor; ctx.fillRect(s/2, -s/4, s/2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/4, s/3, s/2, s/2); },
     granata: (ctx, s, bulletColor) => { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); },
     razzo: (ctx, s, bulletColor) => { ctx.fillStyle = "#445555"; ctx.fillRect(-s/2, -s/4, s*2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/2, s/4, s/2, s/2); ctx.fillStyle = bulletColor; ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); },
