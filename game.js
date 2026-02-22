@@ -21,7 +21,7 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// FUNZIONE MATEMATICA SALVAVITA
+// FUNZIONE MATEMATICA SALVAVITA (Collisione continua proiettili)
 function distToSegment(px, py, x1, y1, x2, y2) {
     let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     if (l2 === 0) return Math.hypot(px - x1, py - y1);
@@ -34,18 +34,7 @@ function distToSegment(px, py, x1, y1, x2, y2) {
 const WEAPON_MODELS = {
     pistola: (ctx, s, bulletColor) => { ctx.fillStyle = "#bbbbbb"; ctx.fillRect(0, -s/4, s*1.5, s/2); ctx.fillStyle = "#444444"; ctx.fillRect(0, s/4, s/2, s/1.5); },
     fucile: (ctx, s, bulletColor) => { ctx.fillStyle = "#333333"; ctx.fillRect(0, -s/6, s*2, s/3); ctx.fillStyle = "#111111"; ctx.fillRect(s, -s/2, s/4, s/3); ctx.fillStyle = "#5c3a21"; ctx.fillRect(-s/2, s/6, s, s/2.5); },
-    bastone: (ctx, s, bulletColor) => { 
-        // Bastone molto più lungo
-        ctx.fillStyle = "#6b3e1b"; 
-        ctx.fillRect(-s, -s/6, s*3.5, s/3); 
-        // Sfera Magica all'estremità
-        ctx.fillStyle = bulletColor; 
-        ctx.shadowBlur = 15; ctx.shadowColor = bulletColor; 
-        ctx.beginPath(); ctx.arc(s*2.5, 0, s/1.5, 0, Math.PI*2); ctx.fill(); 
-        ctx.shadowBlur = 0; 
-        // Anello dorato intorno alla sfera
-        ctx.strokeStyle = "gold"; ctx.lineWidth = 3; ctx.stroke();
-    },
+    bastone: (ctx, s, bulletColor) => { ctx.fillStyle = "#6b3e1b"; ctx.fillRect(-s, -s/6, s*3.5, s/3); ctx.fillStyle = bulletColor; ctx.shadowBlur = 15; ctx.shadowColor = bulletColor; ctx.beginPath(); ctx.arc(s*2.5, 0, s/1.5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = "gold"; ctx.lineWidth = 3; ctx.stroke(); },
     laser: (ctx, s, bulletColor) => { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, -s/3, s*1.5, s/1.5); ctx.fillStyle = bulletColor; ctx.fillRect(s/2, -s/4, s/2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/4, s/3, s/2, s/2); },
     granata: (ctx, s, bulletColor) => { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); },
     razzo: (ctx, s, bulletColor) => { ctx.fillStyle = "#445555"; ctx.fillRect(-s/2, -s/4, s*2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/2, s/4, s/2, s/2); ctx.fillStyle = bulletColor; ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); },
@@ -55,7 +44,7 @@ const WEAPON_MODELS = {
 const WEAPONS_DB = {
     pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, weaponSize: 15, bulletSize: 5, color: "silver", muzzleOffset: 25 },
     fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, weaponSize: 22, bulletSize: 3, color: "white", muzzleOffset: 45 },
-    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, weaponSize: 20, bulletSize: 15, color: "#ff4500", muzzleOffset: 65 }, // Offset allungato
+    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, weaponSize: 20, bulletSize: 15, color: "#ff4500", muzzleOffset: 65 }, 
     laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 40, range: 1500, speed: 0, weaponSize: 20, bulletSize: 4, color: "lime", muzzleOffset: 35 }, 
     granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  weaponSize: 16, bulletSize: 10, color: "#888", muzzleOffset: 15 },
     razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, weaponSize: 25, bulletSize: 14, color: "orange", muzzleOffset: 55 },
@@ -200,28 +189,21 @@ function update() {
 
     beams.forEach(b => b.life--); beams = beams.filter(b => b.life > 0);
 
-    // GESTIONE PROIETTILI - ROCCE
     for (let i = bullets.length - 1; i >= 0; i--) { 
-        let b = bullets[i]; 
-        let oldX = b.x; let oldY = b.y;
-        b.x += b.vx; b.y += b.vy; 
-        
+        let b = bullets[i]; let oldX = b.x; let oldY = b.y; b.x += b.vx; b.y += b.vy; 
         let outOfRange = Math.hypot(b.x - b.startX, b.y - b.startY) > b.range;
         if (outOfRange) { 
             if (b.weaponId === 'granata') explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20});
             bullets.splice(i, 1); continue; 
         } 
-        
         let hitRock = false;
         for (let ri = rocks.length - 1; ri >= 0; ri--) { 
             let r = rocks[ri]; 
-            // Controllo Rocce Normale
             if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size + b.size/2 + 5) { 
                 if (b.weaponId === 'granata') {
                     explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20});
                 } else {
-                    r.hp -= b.damage; 
-                    if (r.hp <= 0 && !r.dead) { r.dead=true; gems.push({ x: r.x, y: r.y, isSuper: true }); } 
+                    r.hp -= b.damage; if (r.hp <= 0 && !r.dead) { r.dead=true; gems.push({ x: r.x, y: r.y, isSuper: true }); } 
                 }
                 bullets.splice(i, 1); hitRock = true; break; 
             } 
@@ -229,7 +211,6 @@ function update() {
         if (hitRock) continue;
     }
 
-    // GESTIONE ESPLOSIONI BOMBE (AoE)
     explosions.forEach(exp => {
         if (exp.life === exp.maxLife) { 
             enemies.forEach(e => {
@@ -251,7 +232,6 @@ function update() {
     for (let i = enemyBullets.length - 1; i >= 0; i--) { let b = enemyBullets[i]; let oldX = b.x; let oldY = b.y; b.x += b.vx; b.y += b.vy; if (Math.hypot(b.x - player.x, b.y - player.y) > 1500) { enemyBullets.splice(i, 1); continue; } let hitRock = false; for (let r of rocks) { if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size) { hitRock = true; break; } } if(hitRock) { enemyBullets.splice(i, 1); continue; } if (distToSegment(player.x, player.y, oldX, oldY, b.x, b.y) < player.size + 5) { damagePlayer(b.damage); enemyBullets.splice(i, 1); } }
     if (Math.random() < 0.0008 && chests.length < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false }); }
     for (let i = chests.length - 1; i >= 0; i--) { let c = chests[i]; if (Math.hypot(player.x - c.x, player.y - c.y) < player.size + c.size) { chests.splice(i, 1); if (c.isSpecial) { showBossRelicModal(); } else { let rand = Math.random(); if (rand < 0.4) { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); updateBarsUI(); showItemFeedback("✚ CURA", "#00ff00"); } else if (rand < 0.7) { let sd = Math.max(canvas.width, canvas.height); enemies.forEach(e => { if(Math.hypot(e.x - player.x, e.y - player.y) < sd) { if (e.type !== 'miniboss') e.hp -= 10000; else e.hp -= 500; e.hitTimer = 5; } }); showItemFeedback("💣 BOMBA!", "#ff4500"); } else { showItemFeedback("⬆️ POTENZIAMENTO!", "#ffff00"); freeUpgrade(); } } } }
-    
     for (let i = rocks.length - 1; i >= 0; i--) { if(rocks[i].dead) { rocks.splice(i,1); } else if (Math.hypot(player.x - rocks[i].x, player.y - rocks[i].y) > 2000) rocks.splice(i, 1); }
     while(rocks.length < 15) { let valid = false; let attempts = 0; let rx, ry, rSize; while(!valid && attempts < 10) { let angle = Math.random() * Math.PI * 2; rx = player.x + Math.cos(angle) * (1000 + Math.random() * 500); ry = player.y + Math.sin(angle) * (1000 + Math.random() * 500); rSize = 25 + Math.random() * 20; valid = isPositionFree(rx, ry, rSize); attempts++; } if (valid) rocks.push({ x: rx, y: ry, size: rSize, hp: 30 }); }
     
@@ -408,17 +388,46 @@ function draw() {
         let dist = Math.hypot(closestChest.x - player.x, closestChest.y - player.y);
         if (dist > 200 && dist < 1500) { 
             let angle = Math.atan2(closestChest.y - player.y, closestChest.x - player.x);
+            ctx.save(); ctx.translate(screenCenterX, screenCenterY); ctx.rotate(angle);
+            ctx.fillStyle = closestChest.isSpecial ? '#ffaa00' : 'gold'; ctx.shadowColor = closestChest.isSpecial ? 'orange' : 'yellow'; ctx.shadowBlur = 15;
+            ctx.beginPath(); ctx.moveTo(80, 0); ctx.lineTo(60, -15); ctx.lineTo(60, 15); ctx.fill(); ctx.restore();
+        }
+    }
+
+    // --- BUSSOLA BOSS ---
+    let boss = enemies.find(e => e.type === 'miniboss');
+    if (boss) {
+        let dist = Math.hypot(boss.x - player.x, boss.y - player.y);
+        if (dist > 250) { 
+            let angle = Math.atan2(boss.y - player.y, boss.x - player.x);
             ctx.save();
             ctx.translate(screenCenterX, screenCenterY);
+            
+            let cx = Math.cos(angle) * 110;
+            let cy = Math.sin(angle) * 110;
+            
+            // Freccia Rossa
+            ctx.save();
+            ctx.translate(cx, cy);
             ctx.rotate(angle);
-            ctx.fillStyle = closestChest.isSpecial ? '#ffaa00' : 'gold';
-            ctx.shadowColor = closestChest.isSpecial ? 'orange' : 'yellow';
-            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#ff0000';
+            ctx.shadowColor = 'red';
+            ctx.shadowBlur = 20;
             ctx.beginPath();
-            ctx.moveTo(80, 0);   
-            ctx.lineTo(60, -15);
-            ctx.lineTo(60, 15);
+            ctx.moveTo(30, 0);   
+            ctx.lineTo(0, -15);
+            ctx.lineTo(0, 15);
             ctx.fill();
+            ctx.restore();
+            
+            // Icona Teschio (Sempre dritta)
+            ctx.font = "28px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = "red";
+            ctx.shadowBlur = 15;
+            ctx.fillText("💀", cx - Math.cos(angle)*25, cy - Math.sin(angle)*25);
+            
             ctx.restore();
         }
     }
