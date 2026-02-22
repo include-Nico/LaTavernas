@@ -20,44 +20,62 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// --- DEFINIZIONE FORME GEOMETRICHE ARMI ---
-const WEAPON_SHAPES = {
-    pistola: (ctx, x, y, s, color) => { // Quadrato
-        ctx.fillStyle = color; ctx.fillRect(x - s/2, y - s/2, s, s);
+// --- DEFINIZIONE DISEGNI ARMI (IMPUGNATE) ---
+// Queste funzioni disegnano l'arma rivolta verso destra. La rotazione è gestita altrove.
+const WEAPON_MODELS = {
+    pistola: (ctx, s, color) => { // L rovesciata
+        ctx.fillStyle = color;
+        ctx.fillRect(0, -s/4, s, s/2); // Canna orizzontale
+        ctx.fillRect(0, s/4, s/3, s/2); // Impugnatura giù
     },
-    fucile: (ctx, x, y, s, color) => { // Triangolo
-        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x, y - s/2); ctx.lineTo(x - s/2, y + s/2); ctx.lineTo(x + s/2, y + s/2); ctx.fill();
+    fucile: (ctx, s, color) => { // Rettangolo stretto, mirino sopra, calcio sotto
+        ctx.fillStyle = color;
+        ctx.fillRect(0, -s/6, s*1.5, s/3); // Canna lunga
+        ctx.fillRect(s/2, -s/2, s/4, s/3); // Mirino sopra
+        ctx.fillRect(-s/4, s/6, s/2, s/3); // Calcio sotto
     },
-    bastone: (ctx, x, y, s, color) => { // Rettangolo lungo (Bastone)
-        ctx.fillStyle = color; ctx.fillRect(x - s/4, y - s/2, s/2, s);
+    bastone: (ctx, s, color) => { // Stecchetto con cerchio in punta
+        ctx.fillStyle = "#8B4513"; // Legno
+        ctx.fillRect(0, -s/8, s*1.5, s/4); // Bastone orizzontale
+        ctx.fillStyle = color; // Colore magico (es. rosso fuoco)
+        ctx.beginPath(); ctx.arc(s*1.5, 0, s/2, 0, Math.PI*2); ctx.fill(); // Sfera in punta
     },
-    laser: (ctx, x, y, s, color) => { // Rombo stretto (Laser)
-        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x, y - s/2); ctx.lineTo(x + s/4, y); ctx.lineTo(x, y + s/2); ctx.lineTo(x - s/4, y); ctx.fill();
+    laser: (ctx, s, color) => { // Fucile più cicciotto
+        ctx.fillStyle = color;
+        ctx.fillRect(0, -s/3, s*1.2, s/1.5); // Corpo cicciotto
+        ctx.fillRect(-s/4, s/3, s/2, s/4); // Calcio piccolo
     },
-    granata: (ctx, x, y, s, color) => { // Pentagono (Granata)
-        ctx.fillStyle = color; ctx.beginPath(); let angle = (Math.PI * 2) / 5;
-        for (let i = 0; i < 5; i++) { let vx = x + Math.cos(i * angle - Math.PI/2) * (s/2); let vy = y + Math.sin(i * angle - Math.PI/2) * (s/2); if(i===0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy); }
-        ctx.fill();
+    granata: (ctx, s, color) => { // Cerchio con miccetta
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(s/2, 0, s/2, 0, Math.PI*2); ctx.fill(); // Corpo bomba
+        ctx.strokeStyle = "#eda"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(s/2, -s/2); ctx.lineTo(s/2 + s/4, -s); ctx.stroke(); // Miccia
     },
-    razzo: (ctx, x, y, s, color) => { // Punta di freccia (Razzo)
-        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x + s/2, y); ctx.lineTo(x - s/2, y - s/2); ctx.lineTo(x - s/4, y); ctx.lineTo(x - s/2, y + s/2); ctx.fill();
+    razzo: (ctx, s, color) => { // Fucile con punta triangolare
+        ctx.fillStyle = color;
+        ctx.fillRect(0, -s/6, s, s/3); // Corpo
+        ctx.beginPath(); ctx.moveTo(s, -s/2); ctx.lineTo(s + s/1.5, 0); ctx.lineTo(s, s/2); ctx.fill(); // Punta triangolo
+        ctx.fillRect(-s/4, s/6, s/2, s/3); // Calcio
     },
-    freezer: (ctx, x, y, s, color) => { // Stella a 4 punte (Ghiaccio)
-        ctx.fillStyle = color; ctx.beginPath(); let inner = s/4; let outer = s/2;
-        for(let i=0; i<8; i++) { let rad = (i%2===0)?outer:inner; let angle=i*Math.PI/4; ctx.lineTo(x+Math.cos(angle)*rad, y+Math.sin(angle)*rad); }
-        ctx.fill();
+    freezer: (ctx, s, color) => { // Pistola con serbatoio dietro
+        ctx.fillStyle = color;
+        ctx.fillRect(0, -s/4, s, s/2); // Canna
+        ctx.fillRect(0, s/4, s/3, s/3); // Impugnatura
+        ctx.fillStyle = "#aaddff"; // Serbatoio ghiaccio
+        ctx.fillRect(-s/1.5, -s/3, s/1.5, s/1.5); // Serbatoio posteriore
     }
 };
 
-// --- DATABASE ARMI (Aggiornato senza icone) ---
+// --- DATABASE ARMI (Aggiornato con offset bocca di fuoco) ---
+// muzzleOffset: quanto lontano dal centro del giocatore nasce il proiettile
 const WEAPONS_DB = {
-    pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, size: 10, color: "yellow" },
-    fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, size: 12, color: "white" },
-    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, size: 18, color: "#ff4500" },
-    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 25, range: 900, speed: 25, size: 14, color: "cyan" },
-    granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  size: 16, color: "#888" },
-    razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, size: 20, color: "orange" },
-    freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, size: 15, color: "#aaddff" }
+    pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, size: 12, color: "yellow", muzzleOffset: 25 },
+    fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, size: 15, color: "white", muzzleOffset: 40 },
+    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, size: 20, color: "#ff4500", muzzleOffset: 45 },
+    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 25, range: 900, speed: 25, size: 18, color: "cyan", muzzleOffset: 35 },
+    granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  size: 16, color: "#666", muzzleOffset: 20 }, // Tenuta in mano
+    razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, size: 20, color: "orange", muzzleOffset: 50 },
+    freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, size: 18, color: "#aaddff", muzzleOffset: 30 }
 };
 
 const CHARACTERS = [
@@ -121,11 +139,9 @@ function handleJoyMove(e) { if (!isDraggingJoy) return; e.preventDefault(); let 
 function handleJoyEnd(e) { isDraggingJoy = false; joyStick.style.transform = `translate(-50%, -50%)`; joyX = 0; joyY = 0; }
 
 function updateBarsUI() { document.getElementById('hp-bar-fill').style.width = (Math.max(0, player.hp) / player.maxHp * 100) + '%'; if(player.maxShield > 0) { document.getElementById('shield-bar-fill').style.width = (Math.max(0, player.shield) / player.maxShield * 100) + '%'; } }
-// Aggiornata per rimuovere le emoji dall'HTML
 function updateWeaponsUI() { const ui = document.getElementById('weapons-ui'); ui.innerHTML = ''; player.weapons.forEach(w => { ui.innerHTML += `<div class="weapon-slot">${w.name} <span class="weapon-lvl">Lv.${w.level}</span></div>`; }); }
 
 function damagePlayer(amount) { player.lastHitTimer = 0; if (player.shield > 0) { player.shield -= amount; if (player.shield < 0) { player.hp += player.shield; player.shield = 0; } } else { player.hp -= amount; } updateBarsUI(); if(player.hp <= 0) triggerGameOver(); }
-// Aggiornata per salvare l'ID dell'arma nel proiettile
 function giveWeapon(weaponData) { player.weapons.push({ ...weaponData, level: 1, currentDamage: weaponData.baseDamage, currentFireRate: weaponData.fireRate, fireTimer: 0 }); updateWeaponsUI(); }
 
 function isPositionFree(x, y, radius) { for (let r of rocks) { if (Math.hypot(x - r.x, y - r.y) < radius + r.size + 10) return false; } return true; }
@@ -155,10 +171,15 @@ function update() {
             let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= weapon.range);
             if (targets.length > 0) {
                 let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
-                let weaponX = player.x; let weaponY = player.y;
-                let angle = Math.atan2(closest.y - weaponY, closest.x - weaponX);
-                // AGGIUNTO weaponId al proiettile
-                bullets.push({ x: weaponX, y: weaponY, startX: weaponX, startY: weaponY, vx: Math.cos(angle)*weapon.speed, vy: Math.sin(angle)*weapon.speed, damage: weapon.currentDamage, size: weapon.size, color: weapon.color, range: weapon.range, weaponId: weapon.id });
+                
+                // Calcolo angolo di mira
+                let angle = Math.atan2(closest.y - player.y, closest.x - player.x);
+                
+                // Calcolo punto di spawn sulla punta dell'arma usando muzzleOffset
+                let spawnX = player.x + Math.cos(angle) * weapon.muzzleOffset;
+                let spawnY = player.y + Math.sin(angle) * weapon.muzzleOffset;
+
+                bullets.push({ x: spawnX, y: spawnY, startX: spawnX, startY: spawnY, vx: Math.cos(angle)*weapon.speed, vy: Math.sin(angle)*weapon.speed, damage: weapon.currentDamage, size: weapon.size, color: weapon.color, range: weapon.range, weaponId: weapon.id });
                 weapon.fireTimer = 0;
             }
         }
@@ -175,6 +196,23 @@ function update() {
     for (let gi = gems.length - 1; gi >= 0; gi--) { let g = gems[gi]; if (Math.hypot(player.x - g.x, player.y - g.y) > 2500) { gems.splice(gi, 1); continue; } let dist = Math.hypot(player.x - g.x, player.y - g.y); if (dist < player.pickupRange) { let angle = Math.atan2(player.y - g.y, player.x - g.x); g.x += Math.cos(angle) * 10; g.y += Math.sin(angle) * 10; } if (dist < player.size) { xp += g.isSuper ? 3 : 1; gems.splice(gi, 1); document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%'; if (xp >= xpNeeded) levelUp(); } }
 }
 
+function drawProjectile(b, camX, camY) {
+    ctx.shadowBlur = 10; ctx.shadowColor = b.color;
+    if (b.weaponId === 'razzo') { // Razzo: Triangolo
+        let s = b.size; ctx.fillStyle = b.color;
+        ctx.save(); ctx.translate(b.x - camX, b.y - camY); ctx.rotate(Math.atan2(b.vy, b.vx));
+        ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s/2, -s/2); ctx.lineTo(-s/2, s/2); ctx.fill(); ctx.restore();
+    } else if (b.weaponId === 'bastone') { // Palla di fuoco: Cerchio grande
+        ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, b.size, 0, Math.PI*2); ctx.fill();
+    } else if (b.weaponId === 'freezer') { // Ghiaccio: Stella
+        let s = b.size; ctx.fillStyle = b.color; ctx.save(); ctx.translate(b.x - camX, b.y - camY); ctx.rotate(frameCount*0.1);
+        ctx.beginPath(); let inner=s/3; let outer=s/1.5; for(let i=0;i<8;i++){let rad=(i%2===0)?outer:inner;let a=i*Math.PI/4;ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.fill(); ctx.restore();
+    } else { // Proiettile standard: Linea spessa/quadrato
+        ctx.fillStyle = b.color; ctx.fillRect(b.x - camX - b.size/2, b.y - camY - b.size/2, b.size, b.size);
+    }
+    ctx.shadowBlur = 0;
+}
+
 function draw() {
     let camX = player.x - canvas.width / 2; let camY = player.y - canvas.height / 2;
     ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -187,29 +225,41 @@ function draw() {
     gems.forEach(g => { ctx.fillStyle = g.isSuper ? '#ffa500' : '#00ffff'; ctx.beginPath(); ctx.arc(g.x - camX, g.y - camY, g.isSuper ? 8 : 4, 0, Math.PI*2); ctx.fill(); });
     ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff'; enemyBullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 6, 0, Math.PI*2); ctx.fill(); }); ctx.shadowBlur = 0;
 
-    // --- DISEGNO PROIETTILI CON FORME ---
-    bullets.forEach(b => {
-        ctx.shadowBlur = 10; ctx.shadowColor = b.color;
-        // Usa la funzione di disegno specifica per l'arma
-        WEAPON_SHAPES[b.weaponId](ctx, b.x - camX, b.y - camY, b.size, b.color);
-        ctx.shadowBlur = 0;
-    });
+    // --- DISEGNO PROIETTILI (Funzione separata) ---
+    bullets.forEach(b => { drawProjectile(b, camX, camY); });
 
     enemies.forEach(e => { let bx = e.x - camX; let by = e.y - camY; let armColor = '#8b0000'; if(e.type === 'miniboss') armColor = '#b8860b'; else if(e.type === 'tank') armColor = '#5a0000'; else if(e.type === 'shooter') armColor = '#4b0082'; if(e.type === 'miniboss') { ctx.shadowBlur = 20; ctx.shadowColor = 'gold'; } let armOffset = Math.sin(frameCount * 0.05 + e.x) * (e.size * 0.5); let bodyW = e.size * 0.8; let bodyH = e.size * 1.2; let armW = e.size * 1.0; let armH = e.size * 1.8; ctx.fillStyle = armColor; ctx.fillRect(bx - bodyW/2 - armW + 2, by - bodyH/2 + armOffset, armW, armH); ctx.fillRect(bx + bodyW/2 - 2, by - bodyH/2 - armOffset, armW, armH); if(e.type === 'shooter') { ctx.fillStyle = '#555'; let handY = by - bodyH/2 - armOffset + armH - 4; ctx.fillRect(bx + bodyW/2 + armW/2, handY, e.size*1.5, 5); ctx.fillRect(bx + bodyW/2 + armW/2, handY, 5, 10); } ctx.fillStyle = e.color; ctx.fillRect(bx - bodyW/2, by - bodyH/2, bodyW, bodyH); ctx.beginPath(); ctx.arc(bx, by - bodyH/2 - e.size*0.3, e.size * 0.9, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; if(e.type === 'miniboss') { ctx.fillStyle = 'black'; ctx.fillRect(bx - 40, by - e.size*2.5, 80, 8); ctx.fillStyle = 'red'; ctx.fillRect(bx - 40, by - e.size*2.5, 80 * (Math.max(0, e.hp)/e.maxHp), 8); } });
 
     let screenCenterX = canvas.width / 2; let screenCenterY = canvas.height / 2;
+    
+    // --- DISEGNO ARMI IMPUGNATE (Rotazione verso bersaglio) ---
+    player.weapons.forEach(w => {
+        let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range);
+        let angle = 0;
+        if (targets.length > 0) {
+             let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
+             angle = Math.atan2(closest.y - player.y, closest.x - player.x);
+        }
+        ctx.save();
+        ctx.translate(screenCenterX, screenCenterY);
+        ctx.rotate(angle);
+        ctx.translate(15, 0); // Offset leggero dal corpo
+        if (WEAPON_MODELS[w.id]) { WEAPON_MODELS[w.id](ctx, w.size, w.color); }
+        ctx.restore();
+    });
+
     if (player.shield > 0) { ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.size + 10, 0, Math.PI*2); ctx.fillStyle = 'rgba(0, 150, 255, 0.3)'; ctx.fill(); }
     ctx.fillStyle = '#00ff00'; let pBodyW = player.size * 1.2; let pBodyH = player.size * 1.8;
     if (player.charId === 0) { ctx.fillRect(screenCenterX - pBodyW/2, screenCenterY - pBodyH/2 + 5, pBodyW, pBodyH); } else if (player.charId === 1) { ctx.beginPath(); ctx.moveTo(screenCenterX - pBodyW, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX + pBodyW, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX, screenCenterY + pBodyH/2 + 5); ctx.fill(); } else if (player.charId === 2) { ctx.beginPath(); ctx.moveTo(screenCenterX, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX + pBodyW, screenCenterY + pBodyH/2 + 5); ctx.lineTo(screenCenterX - pBodyW, screenCenterY + pBodyH/2 + 5); ctx.fill(); }
     ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2, player.size * 0.6, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.pickupRange, 0, Math.PI*2); ctx.stroke();
 
-    // --- DISEGNO UI ARMI IN BASSO AL CENTRO CON FORME ---
+    // --- DISEGNO UI ARMI IN BASSO (Forme fisse) ---
     player.weapons.forEach((w, index) => {
-        let weaponX = screenCenterX + (index === 0 ? 35 : -35); let weaponY = screenCenterY + pBodyH + 20;
-        // Sfondo scuro per l'arma
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.beginPath(); ctx.arc(weaponX, weaponY, 20, 0, Math.PI*2); ctx.fill();
-        // Disegna la forma dell'arma
-        WEAPON_SHAPES[w.id](ctx, weaponX, weaponY, 25, w.color);
+        let weaponX = screenCenterX + (index === 0 ? -40 : 40); let weaponY = screenCenterY + pBodyH + 40;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.beginPath(); ctx.arc(weaponX, weaponY, 25, 0, Math.PI*2); ctx.fill(); // Sfondo tondo
+        ctx.save(); ctx.translate(weaponX-5, weaponY); // Centra la forma nel cerchio UI
+        if (WEAPON_MODELS[w.id]) { WEAPON_MODELS[w.id](ctx, 20, w.color); }
+        ctx.restore();
     });
 
     ctx.font = "bold 20px Arial"; ctx.fillStyle = "white"; ctx.shadowBlur = 5; ctx.shadowColor = "black"; ctx.fillText(activePlayerName, screenCenterX, screenCenterY - pBodyH/2 - player.size - 15); ctx.shadowBlur = 0;
@@ -219,7 +269,6 @@ function draw() {
 
 function buildUpgradePool() {
     let pool = [];
-    // Aggiornato per usare il nome e il colore invece dell'icona
     player.weapons.forEach(w => { pool.push({ name: `<span class="upgrade-title" style="color:${w.color}">⏫ Potenzia ${w.name} (Lv.${w.level + 1})</span><span class="upgrade-desc">Danni e velocità incrementati</span>`, apply: () => { w.level++; w.currentDamage += Math.floor(w.baseDamage * 0.4); w.currentFireRate = Math.max(5, w.currentFireRate - 5); updateWeaponsUI(); finishUpgrade(); } }); });
     let charWeapons = CHARACTERS.find(c => c.id === player.charId).weapons;
     charWeapons.forEach(wId => { let wt = WEAPONS_DB[wId]; if (!player.weapons.find(owned => owned.id === wt.id)) { pool.push({ name: `<span class="upgrade-title" style="color:${wt.color}">🆕 Prendi: ${wt.name}</span><span class="upgrade-desc">Aggiungi all'arsenale</span>`, apply: () => { handleNewWeapon(wt); } }); } });
@@ -232,7 +281,6 @@ function levelUp() { paused = true; xp = xp - xpNeeded; xpNeeded = Math.floor(xp
 function freeUpgrade() { paused = true; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Cassa: Scelta Gratuita!"; document.getElementById('levelup-title').style.color = "#ffff00"; document.getElementById('levelup-modal').style.display = 'block'; }
 function showBossRelicModal() { paused = true; let pool = [ { name: `<span class="upgrade-title">🌀 Palle Rotanti</span><span class="upgrade-desc">2 sfere lasciano una scia dannosa</span>`, apply: () => { player.hasOrbs = true; closeBossModal(); } }, { name: `<span class="upgrade-title">🛡️ Scudo Rigenerativo</span><span class="upgrade-desc">Assorbe danni e si ricarica da solo</span>`, apply: () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeBossModal(); } } ]; if (player.miniMes.length < 3) { pool.push({ name: `<span class="upgrade-title">🤖 Mini Me</span><span class="upgrade-desc">Un robottino alleato che spara per te</span>`, apply: () => { player.miniMes.push({x: player.x, y: player.y, hp: 100, maxHp: 100, fireTimer: 0}); closeBossModal(); } }); } else { pool.push({ name: `<span class="upgrade-title">❤️ Titanico</span><span class="upgrade-desc">Aumenta e cura tutti gli HP</span>`, apply: () => { player.maxHp += 100; player.hp = player.maxHp; updateBarsUI(); closeBossModal(); } }); } for(let i=0; i<3; i++) { let btn = document.getElementById('boss-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('boss-modal').style.display = 'block'; }
 function closeBossModal() { document.getElementById('boss-modal').style.display = 'none'; paused = false; }
-// Aggiornato per usare nome e colore invece dell'icona
 function handleNewWeapon(weaponData) { if (player.weapons.length < 2) { giveWeapon(weaponData); finishUpgrade(); } else { pendingWeapon = weaponData; document.getElementById('new-weapon-name').innerHTML = `<span style="color:${weaponData.color}">${weaponData.name}</span>`; document.getElementById('rep-btn0').innerHTML = `<span class="upgrade-title" style="color:${player.weapons[0].color}">Scarta ${player.weapons[0].name}</span><span class="upgrade-desc">Lv. ${player.weapons[0].level}</span>`; document.getElementById('rep-btn1').innerHTML = `<span class="upgrade-title" style="color:${player.weapons[1].color}">Scarta ${player.weapons[1].name}</span><span class="upgrade-desc">Lv. ${player.weapons[1].level}</span>`; document.getElementById('replace-modal').style.display = 'block'; } }
 function confirmReplace(slotIndex) { player.weapons[slotIndex] = { ...pendingWeapon, level: 1, currentDamage: pendingWeapon.baseDamage, currentFireRate: pendingWeapon.fireRate, fireTimer: 0 }; updateWeaponsUI(); document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
 function cancelReplace() { document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
