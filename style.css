@@ -9,11 +9,24 @@ canvas { display: block; }
     background: linear-gradient(to bottom, #1a1a2e, #000000);
     display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
 }
-.game-title { font-size: 80px; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 50px; text-align: center; }
+
+/* Titolo Reso Elastico e Compatto */
+.game-title { 
+    font-size: clamp(40px, 8vw, 80px); 
+    color: #00ffff; 
+    text-shadow: 0 0 20px #00ffff; 
+    margin-bottom: 40px; 
+    text-align: center; 
+    line-height: 1.1; /* Riduce lo spazio vuoto tra le due parole */
+}
+
+/* Bottoni Menu */
 .menu-btn {
     background: linear-gradient(145deg, #0088cc, #005599); border: 3px solid #00ffff; color: white;
-    font-size: 24px; font-weight: bold; padding: 15px 40px; margin: 10px; border-radius: 15px;
-    cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3); width: 300px;
+    font-size: 22px; font-weight: bold; padding: 15px 30px; margin: 10px; border-radius: 15px;
+    cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3); 
+    width: 320px; max-width: 90vw; /* Impedisce che il bottone esca dallo schermo */
+    white-space: nowrap; /* Evita che il testo vada a capo male */
 }
 .menu-btn:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0, 255, 255, 0.6); filter: brightness(1.2); }
 .settings-btn { background: linear-gradient(145deg, #8800cc, #550099); border-color: #ff00ff; box-shadow: 0 5px 15px rgba(255, 0, 255, 0.3); }
@@ -51,21 +64,21 @@ canvas { display: block; }
 #xp-bar-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 15px; background: #222; z-index: 10; }
 #xp-bar { height: 100%; background: #00ffff; width: 0%; transition: width 0.2s; box-shadow: 0 0 10px #00ffff;}
 
-/* --- JOYSTICK MOBILE (Più grande e più in alto) --- */
+/* --- JOYSTICK MOBILE --- */
 #joystick-zone {
-    position: absolute; bottom: 80px; /* Alzato di 40px rispetto a prima */
+    position: absolute; bottom: 80px; 
     left: 50%; transform: translateX(-50%);
-    width: 250px; height: 250px; /* Area di tocco più grande */
+    width: 250px; height: 250px; 
     z-index: 50; display: flex; justify-content: center; align-items: center;
 }
 #joystick-base {
-    width: 160px; height: 160px; /* Base più grande */
+    width: 160px; height: 160px; 
     background: rgba(255, 255, 255, 0.1);
     border: 3px solid rgba(255, 255, 255, 0.4); border-radius: 50%;
     position: relative; box-shadow: 0 0 20px rgba(0,255,255,0.2);
 }
 #joystick-stick {
-    width: 75px; height: 75px; /* Levetta più grande */
+    width: 75px; height: 75px; 
     background: rgba(0, 255, 255, 0.7);
     border-radius: 50%; position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%); box-shadow: 0 0 15px #00ffff; pointer-events: none;
@@ -83,34 +96,36 @@ canvas { display: block; }
 }
 .upgrade-btn:hover { background: linear-gradient(145deg, #4d4d4d, #3b3b3b); border-color: #00ffff; transform: translateY(-3px); }
 .upgrade-btn.boss-btn:hover { border-color: #ffd700; box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4); } 
-.upgrade-title { font-size: 20px; font-weight: bold; color: #fff; }
-.upgrade-desc { font-size: 14px; color: #bbb; }
+.upgrade-title { font-size: 20px; font-weight: bold; color: #fff; text-align: center; }
+.upgrade-desc { font-size: 14px; color: #bbb; text-align: center; }
 
 .item-feedback { position: absolute; font-size: 35px; font-weight: bold; animation: floatUp 1.5s forwards; z-index: 15; text-shadow: 2px 2px 4px #000; text-align: center; pointer-events: none;}
 @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.1); } }
 
-/* --- OTTIMIZZAZIONI PER TELEFONI (Schermi stretti) --- */
+/* --- OTTIMIZZAZIONI RIGOROSE PER TELEFONI --- */
 @media (max-width: 768px) {
-    /* Rimpicciolisce il titolo e i bottoni nel menu principale */
-    .game-title { font-size: 50px; margin-bottom: 30px; }
-    .menu-btn { font-size: 18px; padding: 15px 20px; width: 250px; }
+    /* Il titolo si adatta e si compatta */
+    .game-title { font-size: 45px; margin-bottom: 25px; line-height: 1; }
     
-    /* Sistema l'interfaccia in alto a sinistra per non coprire lo schermo */
+    /* Bottoni menu perfetti per il touch ma senza sbordare */
+    .menu-btn { font-size: 16px; padding: 15px 10px; width: 280px; max-width: 90vw; margin: 8px; border-width: 2px; }
+    
+    /* Sistema l'interfaccia di gioco per non coprire l'azione */
     #ui { top: 10px; left: 10px; gap: 8px; font-size: 16px; }
     .top-row { gap: 10px; }
-    .hp-bar-bg, .shield-bar-bg { width: 110px; } /* Barre più corte */
+    .hp-bar-bg, .shield-bar-bg { width: 120px; height: 18px; } 
     .bar-icon { font-size: 18px; width: 20px; }
     
     #weapons-ui { gap: 8px; font-size: 16px; padding: 5px; }
     .weapon-slot { gap: 3px; }
     
-    /* Adatta i Menu di Livello per schermi piccoli */
-    .modal { padding: 15px; width: 95%; }
+    /* Modali di fine livello ottimizzati */
+    .modal { padding: 15px; width: 95%; max-height: 90vh; overflow-y: auto; }
     .upgrade-btn { padding: 10px; margin: 8px 0; }
-    .upgrade-title { font-size: 16px; }
+    .upgrade-title { font-size: 15px; }
     .upgrade-desc { font-size: 12px; }
 
-    /* Rende le carte dei personaggi scorrevoli e più piccole */
+    /* Carte personaggi scrollabili verticalmente */
     .char-card { width: 140px; padding: 10px; }
     .char-card h3 { font-size: 16px; margin: 5px 0; }
     .lock-icon { font-size: 40px; }
