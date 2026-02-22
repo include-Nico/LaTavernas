@@ -11,7 +11,6 @@ canvas { display: block; }
 }
 .game-title { font-size: clamp(40px, 8vw, 80px); color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 20px; text-align: center; line-height: 1.1; }
 
-/* Casella di Testo per il Nome */
 #player-name-input {
     background: #222; border: 3px solid #00ffff; color: #fff; font-size: 24px; font-weight: bold;
     padding: 15px; margin-bottom: 25px; border-radius: 15px; text-align: center;
@@ -35,6 +34,7 @@ canvas { display: block; }
 .char-card.locked:hover { transform: none; border-color: #555; }
 .char-card.selected { border-color: #00ff00; box-shadow: 0 0 20px #00ff00; }
 .lock-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; text-shadow: 0 0 10px #000; }
+.char-weapons-list { font-size: 16px; color: #00ffff; margin: 15px 0; min-height: 60px; display: flex; flex-direction: column; justify-content: center;}
 
 /* --- UI GIOCO --- */
 #ui { position: absolute; top: 20px; left: 20px; z-index: 10; display: flex; flex-direction: column; gap: 15px; font-size: 20px; text-shadow: 2px 2px 0 #000; }
@@ -50,15 +50,15 @@ canvas { display: block; }
 .shield-bar-bg { width: 150px; height: 16px; background: #222; border: 2px solid #000; border-radius: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,100,255,0.4); }
 #shield-bar-fill { height: 100%; background: linear-gradient(to bottom, #00d4ff, #0055ff); width: 100%; transition: width 0.2s; border-radius: 8px; }
 
-#weapons-ui { display: flex; gap: 10px; font-size: 20px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 10px; border: 2px solid #555; width: fit-content; }
-.weapon-slot { display: flex; align-items: center; gap: 5px; }
+#weapons-ui { display: flex; gap: 10px; font-size: 18px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 10px; border: 2px solid #555; width: fit-content; }
+.weapon-slot { display: flex; align-items: center; gap: 5px; color: #ccc; }
 .weapon-lvl { font-size: 14px; color: #00ffff; font-weight: bold; }
 
-/* PULSANTE PAUSA INGRANDITO E FISSATO */
+/* PULSANTE PAUSA */
 #pause-btn {
     position: absolute; top: 20px; right: 20px; z-index: 1000; pointer-events: auto;
     background: rgba(0, 0, 0, 0.8); border: 3px solid #00ffff; color: white;
-    font-size: 35px; border-radius: 15px; padding: 10px 20px; cursor: pointer; box-shadow: 0 0 15px #00ffff;
+    font-size: 28px; font-weight:900; border-radius: 15px; padding: 10px 20px; cursor: pointer; box-shadow: 0 0 15px #00ffff;
     transition: transform 0.1s;
 }
 #pause-btn:active { transform: scale(0.9); background: #333; }
@@ -102,10 +102,10 @@ canvas { display: block; }
     .hp-bar-bg, .shield-bar-bg { width: 120px; height: 18px; } 
     .bar-icon { font-size: 18px; width: 20px; }
     
-    #weapons-ui { gap: 8px; font-size: 16px; padding: 5px; }
+    #weapons-ui { gap: 8px; font-size: 14px; padding: 5px; }
     .weapon-slot { gap: 3px; }
 
-    #pause-btn { top: 15px; right: 15px; padding: 12px 20px; font-size: 30px; border-width: 2px; }
+    #pause-btn { top: 15px; right: 15px; padding: 10px 18px; font-size: 24px; border-width: 2px; }
     
     .modal { padding: 15px; width: 95%; max-height: 90vh; overflow-y: auto; }
     .upgrade-btn { padding: 10px; margin: 8px 0; }
