@@ -16,7 +16,7 @@ let chestImg = new Image(); chestImg.src = 'chest.png';
 let joyX = 0, joyY = 0;
 let isDraggingJoy = false;
 let joyBaseRect;
-const maxJoyDist = 45; // Escursione massima della levetta
+const maxJoyDist = 55; // AGGIORNATO: Raggio aumentato per il joystick più grande!
 const joyZone = document.getElementById('joystick-zone');
 const joyStick = document.getElementById('joystick-stick');
 
@@ -214,7 +214,7 @@ function update() {
         if (keys['a'] || keys['arrowleft']) dx -= 1;
         if (keys['d'] || keys['arrowright']) dx += 1;
         
-        // Normalizzazione Diagonale (evita che il PC vada più veloce in obliquo)
+        // Normalizzazione Diagonale
         if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; }
     } else {
         // Usa i valori normalizzati del joystick Touch
@@ -453,13 +453,12 @@ function draw() {
     ctx.fillStyle = '#00ff00';
     let pBodyW = player.size * 1.2; let pBodyH = player.size * 1.8;
     
-    // Disegno Personaggio in base alla Selezione
     if (player.charId === 0) {
         ctx.fillRect(screenCenterX - pBodyW/2, screenCenterY - pBodyH/2 + 5, pBodyW, pBodyH);
-    } else if (player.charId === 1) { // Cono
+    } else if (player.charId === 1) { 
         ctx.beginPath(); ctx.moveTo(screenCenterX - pBodyW, screenCenterY - pBodyH/2 + 5);
         ctx.lineTo(screenCenterX + pBodyW, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX, screenCenterY + pBodyH/2 + 5); ctx.fill();
-    } else if (player.charId === 2) { // Piramide
+    } else if (player.charId === 2) { 
         ctx.beginPath(); ctx.moveTo(screenCenterX, screenCenterY - pBodyH/2 + 5);
         ctx.lineTo(screenCenterX + pBodyW, screenCenterY + pBodyH/2 + 5); ctx.lineTo(screenCenterX - pBodyW, screenCenterY + pBodyH/2 + 5); ctx.fill();
     }
@@ -549,5 +548,4 @@ function confirmReplace(slotIndex) { player.weapons[slotIndex] = { ...pendingWea
 function cancelReplace() { document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
 function finishUpgrade() { paused = false; }
 
-// Mostra il menu all'avvio
 showMenu();
