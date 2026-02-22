@@ -3,19 +3,28 @@ const ctx = canvas.getContext('2d');
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize); resize();
 
+// --- STATO E MENU ---
+let gameState = "MENU"; 
+let paused = false; let frameCount = 0;
+let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
+let selectedCharId = 0;
+let controlMode = 'pc'; // 'pc' o 'mobile'
+
+let chestImg = new Image(); chestImg.src = 'chest.png';
+
+// --- VARIABILI JOYSTICK ---
+let joyX = 0, joyY = 0;
+let isDraggingJoy = false;
+let joyBaseRect;
+const maxJoyDist = 45; // Escursione massima della levetta
+const joyZone = document.getElementById('joystick-zone');
+const joyStick = document.getElementById('joystick-stick');
+
 let keys = {}; 
 window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// Variabili di Stato
-let gameState = "MENU"; // MENU, SELECT, PLAYING, GAMEOVER
-let paused = false; let frameCount = 0;
-let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
-let selectedCharId = 0;
-
-let chestImg = new Image(); chestImg.src = 'chest.png';
-
-// --- DATABASE ARMI ESPANSO ---
+// --- DATABASE GIOCO ---
 const WEAPONS_DB = {
     pistola: { id: 'pistola', name: "Pistola", icon: "🔫", baseDamage: 12, fireRate: 45, range: 600, speed: 12, size: 5, color: "yellow" },
     fucile:  { id: 'fucile',  name: "Fucile",  icon: "💥", baseDamage: 8,  fireRate: 15, range: 800, speed: 20, size: 3, color: "white" },
@@ -26,7 +35,6 @@ const WEAPONS_DB = {
     freezer: { id: 'freezer', name: "Freezer", icon: "❄️", baseDamage: 20, fireRate: 35, range: 600, speed: 15, size: 6, color: "#aaddff" }
 };
 
-// --- DATABASE PERSONAGGI ---
 const CHARACTERS = [
     { id: 0, name: "Recluta", desc: "Corpo Quadrato", reqLevel: 1, weapons: ['pistola', 'fucile', 'bastone'] },
     { id: 1, name: "Gelataio", desc: "Corpo a Cono", reqLevel: 10, weapons: ['pistola', 'laser', 'granata'] },
@@ -37,7 +45,18 @@ let player = {};
 let enemies = []; let bullets = []; let enemyBullets = []; let gems = []; let rocks = []; let chests = [];
 let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendingWeapon = null;
 
-// --- GESTIONE MENU E STATI ---
+// --- MENU & IMPOSTAZIONI ---
+function toggleControls() {
+    let btn = document.getElementById('btn-controls');
+    if (controlMode === 'pc') {
+        controlMode = 'mobile';
+        btn.innerText = "📱 CONTROLLI: TELEFONO";
+    } else {
+        controlMode = 'pc';
+        btn.innerText = "🕹️ CONTROLLI: PC";
+    }
+}
+
 function showMenu() {
     gameState = "MENU";
     document.getElementById('main-menu').style.display = 'flex';
@@ -52,14 +71,12 @@ function backToMenu() { showMenu(); }
 function showCharacterSelect() {
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('character-select').style.display = 'flex';
-    
     const container = document.getElementById('char-cards-container');
     container.innerHTML = '';
     
     CHARACTERS.forEach(char => {
         let isUnlocked = maxLevelReached >= char.reqLevel;
         let isSelected = selectedCharId === char.id;
-        
         let wIcons = char.weapons.map(w => WEAPONS_DB[w].icon).join(" ");
         
         let card = document.createElement('div');
@@ -73,10 +90,7 @@ function showCharacterSelect() {
         `;
         
         if (isUnlocked) {
-            card.onclick = () => {
-                selectedCharId = char.id;
-                showCharacterSelect(); // Ridisegna per aggiornare il bordo verde
-            };
+            card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); };
         }
         container.appendChild(card);
     });
@@ -90,15 +104,17 @@ function startGame() {
     document.getElementById('game-ui').style.display = 'block';
     canvas.style.display = 'block';
     
-    // RESET VARIABILI
+    // Mostra Joystick se mobile
+    document.getElementById('joystick-zone').style.display = (controlMode === 'mobile') ? 'flex' : 'none';
+
+    // RESET 
     player = { 
         x: 0, y: 0, size: 20, speed: 4, hp: 100, maxHp: 100, pickupRange: 80, weapons: [],
         shield: 0, maxShield: 0, lastHitTimer: 0, hasOrbs: false, orbAngle: 0, orbTrail: [], miniMes: [], lastBossLevel: 0, charId: selectedCharId
     };
     enemies = []; bullets = []; enemyBullets = []; gems = []; rocks = []; chests = [];
-    xp = 0; level = 1; xpNeeded = 15; frameCount = 0; keys = {}; paused = false;
+    xp = 0; level = 1; xpNeeded = 15; frameCount = 0; keys = {}; paused = false; joyX = 0; joyY = 0;
 
-    // Genera rocce iniziali
     for(let i = 0; i < 15; i++) { 
         let valid = false; let attempts = 0; let rx, ry, rSize;
         while(!valid && attempts < 10) {
@@ -109,35 +125,58 @@ function startGame() {
         if (valid) rocks.push({ x: rx, y: ry, size: rSize, hp: 30 });
     }
 
-    giveWeapon(WEAPONS_DB.pistola); // Arma base per tutti
-    updateBarsUI();
-    document.getElementById('lvl').innerText = level;
-    document.getElementById('shield-ui').style.display = 'none';
-    
+    giveWeapon(WEAPONS_DB.pistola); 
+    updateBarsUI(); document.getElementById('lvl').innerText = level; document.getElementById('shield-ui').style.display = 'none';
     requestAnimationFrame(gameLoop);
 }
 
 function triggerGameOver() {
-    paused = true;
-    gameState = "GAMEOVER";
-    
-    // Aggiorna e salva il record
-    if (level > maxLevelReached) {
-        maxLevelReached = level;
-        localStorage.setItem('survivorMaxLevel', maxLevelReached);
-    }
-    
+    paused = true; gameState = "GAMEOVER";
+    if (level > maxLevelReached) { maxLevelReached = level; localStorage.setItem('survivorMaxLevel', maxLevelReached); }
     document.getElementById('final-level').innerText = level;
     document.getElementById('game-ui').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'flex';
 }
 
+// --- EVENTI JOYSTICK TOUCH ---
+joyZone.addEventListener('touchstart', handleJoyStart, {passive: false});
+joyZone.addEventListener('touchmove', handleJoyMove, {passive: false});
+joyZone.addEventListener('touchend', handleJoyEnd);
+
+function handleJoyStart(e) {
+    e.preventDefault();
+    joyBaseRect = document.getElementById('joystick-base').getBoundingClientRect();
+    isDraggingJoy = true;
+    handleJoyMove(e);
+}
+function handleJoyMove(e) {
+    if (!isDraggingJoy) return;
+    e.preventDefault();
+    let touch = e.touches[0];
+    let centerX = joyBaseRect.left + joyBaseRect.width / 2;
+    let centerY = joyBaseRect.top + joyBaseRect.height / 2;
+    let dx = touch.clientX - centerX;
+    let dy = touch.clientY - centerY;
+    let dist = Math.hypot(dx, dy);
+    
+    // Limita la levetta dentro al cerchio
+    if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; }
+    
+    joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    
+    // Valore normalizzato tra -1 e 1 per il movimento del giocatore
+    joyX = dx / maxJoyDist; joyY = dy / maxJoyDist;
+}
+function handleJoyEnd(e) {
+    isDraggingJoy = false;
+    joyStick.style.transform = `translate(-50%, -50%)`;
+    joyX = 0; joyY = 0;
+}
+
 // --- FUNZIONI DI GIOCO ---
 function updateBarsUI() { 
     document.getElementById('hp-bar-fill').style.width = (Math.max(0, player.hp) / player.maxHp * 100) + '%'; 
-    if(player.maxShield > 0) {
-        document.getElementById('shield-bar-fill').style.width = (Math.max(0, player.shield) / player.maxShield * 100) + '%'; 
-    }
+    if(player.maxShield > 0) { document.getElementById('shield-bar-fill').style.width = (Math.max(0, player.shield) / player.maxShield * 100) + '%'; }
 }
 function updateWeaponsUI() {
     const ui = document.getElementById('weapons-ui'); ui.innerHTML = '';
@@ -147,13 +186,9 @@ function damagePlayer(amount) {
     player.lastHitTimer = 0; 
     if (player.shield > 0) { player.shield -= amount; if (player.shield < 0) { player.hp += player.shield; player.shield = 0; } } 
     else { player.hp -= amount; }
-    updateBarsUI();
-    if(player.hp <= 0) triggerGameOver();
+    updateBarsUI(); if(player.hp <= 0) triggerGameOver();
 }
-function giveWeapon(weaponData) {
-    player.weapons.push({ ...weaponData, level: 1, currentDamage: weaponData.baseDamage, currentFireRate: weaponData.fireRate, fireTimer: 0 });
-    updateWeaponsUI();
-}
+function giveWeapon(weaponData) { player.weapons.push({ ...weaponData, level: 1, currentDamage: weaponData.baseDamage, currentFireRate: weaponData.fireRate, fireTimer: 0 }); updateWeaponsUI(); }
 function isPositionFree(x, y, radius) { for (let r of rocks) { if (Math.hypot(x - r.x, y - r.y) < radius + r.size + 10) return false; } return true; }
 function showItemFeedback(text, color) {
     let el = document.createElement('div'); el.className = 'item-feedback'; el.innerHTML = text; el.style.color = color;
@@ -164,25 +199,36 @@ function showItemFeedback(text, color) {
 // --- LOGICA PRINCIPALE ---
 function gameLoop() {
     if (gameState !== "PLAYING") return;
-    if (!paused) {
-        update();
-        draw();
-    }
+    if (!paused) { update(); draw(); }
     requestAnimationFrame(gameLoop);
 }
 
 function update() {
     frameCount++;
 
+    // Movimento Dinamico (PC vs Telefono)
     let dx = 0; let dy = 0;
-    if (keys['w'] || keys['arrowup']) dy -= player.speed; if (keys['s'] || keys['arrowdown']) dy += player.speed;
-    if (keys['a'] || keys['arrowleft']) dx -= player.speed; if (keys['d'] || keys['arrowright']) dx += player.speed;
+    if (controlMode === 'pc') {
+        if (keys['w'] || keys['arrowup']) dy -= 1;
+        if (keys['s'] || keys['arrowdown']) dy += 1;
+        if (keys['a'] || keys['arrowleft']) dx -= 1;
+        if (keys['d'] || keys['arrowright']) dx += 1;
+        
+        // Normalizzazione Diagonale (evita che il PC vada più veloce in obliquo)
+        if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; }
+    } else {
+        // Usa i valori normalizzati del joystick Touch
+        dx = joyX; dy = joyY;
+    }
+
+    // Applica velocità
+    let moveX = dx * player.speed; let moveY = dy * player.speed;
     let canMoveX = true; let canMoveY = true;
     for (let r of rocks) {
-        if (Math.hypot((player.x + dx) - r.x, player.y - r.y) < player.size + r.size) canMoveX = false;
-        if (Math.hypot(player.x - r.x, (player.y + dy) - r.y) < player.size + r.size) canMoveY = false;
+        if (Math.hypot((player.x + moveX) - r.x, player.y - r.y) < player.size + r.size) canMoveX = false;
+        if (Math.hypot(player.x - r.x, (player.y + moveY) - r.y) < player.size + r.size) canMoveY = false;
     }
-    if (canMoveX) player.x += dx; if (canMoveY) player.y += dy;
+    if (canMoveX) player.x += moveX; if (canMoveY) player.y += moveY;
 
     if (player.maxShield > 0) {
         player.lastHitTimer++;
@@ -401,33 +447,23 @@ function draw() {
         if(e.type === 'miniboss') { ctx.fillStyle = 'black'; ctx.fillRect(bx - 40, by - e.size*2.5, 80, 8); ctx.fillStyle = 'red'; ctx.fillRect(bx - 40, by - e.size*2.5, 80 * (Math.max(0, e.hp)/e.maxHp), 8); }
     });
 
-    // --- DISEGNO GIOCATORE IN BASE ALLA SELEZIONE ---
     let screenCenterX = canvas.width / 2; let screenCenterY = canvas.height / 2;
     if (player.shield > 0) { ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.size + 10, 0, Math.PI*2); ctx.fillStyle = 'rgba(0, 150, 255, 0.3)'; ctx.fill(); }
     
     ctx.fillStyle = '#00ff00';
     let pBodyW = player.size * 1.2; let pBodyH = player.size * 1.8;
     
+    // Disegno Personaggio in base alla Selezione
     if (player.charId === 0) {
-        // Personaggio Base: Corpo Quadrato
         ctx.fillRect(screenCenterX - pBodyW/2, screenCenterY - pBodyH/2 + 5, pBodyW, pBodyH);
-    } else if (player.charId === 1) {
-        // Personaggio 1 (Liv. 10): Cono in giù
-        ctx.beginPath();
-        ctx.moveTo(screenCenterX - pBodyW, screenCenterY - pBodyH/2 + 5);
-        ctx.lineTo(screenCenterX + pBodyW, screenCenterY - pBodyH/2 + 5);
-        ctx.lineTo(screenCenterX, screenCenterY + pBodyH/2 + 5);
-        ctx.fill();
-    } else if (player.charId === 2) {
-        // Personaggio 2 (Liv. 15): Piramide in su
-        ctx.beginPath();
-        ctx.moveTo(screenCenterX, screenCenterY - pBodyH/2 + 5);
-        ctx.lineTo(screenCenterX + pBodyW, screenCenterY + pBodyH/2 + 5);
-        ctx.lineTo(screenCenterX - pBodyW, screenCenterY + pBodyH/2 + 5);
-        ctx.fill();
+    } else if (player.charId === 1) { // Cono
+        ctx.beginPath(); ctx.moveTo(screenCenterX - pBodyW, screenCenterY - pBodyH/2 + 5);
+        ctx.lineTo(screenCenterX + pBodyW, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX, screenCenterY + pBodyH/2 + 5); ctx.fill();
+    } else if (player.charId === 2) { // Piramide
+        ctx.beginPath(); ctx.moveTo(screenCenterX, screenCenterY - pBodyH/2 + 5);
+        ctx.lineTo(screenCenterX + pBodyW, screenCenterY + pBodyH/2 + 5); ctx.lineTo(screenCenterX - pBodyW, screenCenterY + pBodyH/2 + 5); ctx.fill();
     }
 
-    // Testa sempre uguale per tutti
     ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2, player.size * 0.6, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.pickupRange, 0, Math.PI*2); ctx.stroke();
 
@@ -453,7 +489,6 @@ function buildUpgradePool() {
     let pool = [];
     player.weapons.forEach(w => { pool.push({ name: `<span class="upgrade-title">⏫ ${w.icon} Potenzia ${w.name} (Lv.${w.level + 1})</span><span class="upgrade-desc">Danni e velocità incrementati</span>`, apply: () => { w.level++; w.currentDamage += Math.floor(w.baseDamage * 0.4); w.currentFireRate = Math.max(5, w.currentFireRate - 5); updateWeaponsUI(); finishUpgrade(); } }); });
     
-    // Mostra SOLO le armi disponibili per il personaggio selezionato
     let charWeapons = CHARACTERS.find(c => c.id === player.charId).weapons;
     charWeapons.forEach(wId => {
         let wt = WEAPONS_DB[wId];
@@ -514,5 +549,5 @@ function confirmReplace(slotIndex) { player.weapons[slotIndex] = { ...pendingWea
 function cancelReplace() { document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
 function finishUpgrade() { paused = false; }
 
-// Inizia mostrando il menu
+// Mostra il menu all'avvio
 showMenu();
