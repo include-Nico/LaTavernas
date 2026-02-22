@@ -51,18 +51,22 @@ canvas { display: block; }
 #xp-bar-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 15px; background: #222; z-index: 10; }
 #xp-bar { height: 100%; background: #00ffff; width: 0%; transition: width 0.2s; box-shadow: 0 0 10px #00ffff;}
 
-/* --- JOYSTICK MOBILE --- */
+/* --- JOYSTICK MOBILE (Più grande e più in alto) --- */
 #joystick-zone {
-    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-    width: 200px; height: 200px; z-index: 50; display: flex; justify-content: center; align-items: center;
+    position: absolute; bottom: 80px; /* Alzato di 40px rispetto a prima */
+    left: 50%; transform: translateX(-50%);
+    width: 250px; height: 250px; /* Area di tocco più grande */
+    z-index: 50; display: flex; justify-content: center; align-items: center;
 }
 #joystick-base {
-    width: 130px; height: 130px; background: rgba(255, 255, 255, 0.1);
+    width: 160px; height: 160px; /* Base più grande */
+    background: rgba(255, 255, 255, 0.1);
     border: 3px solid rgba(255, 255, 255, 0.4); border-radius: 50%;
     position: relative; box-shadow: 0 0 20px rgba(0,255,255,0.2);
 }
 #joystick-stick {
-    width: 60px; height: 60px; background: rgba(0, 255, 255, 0.7);
+    width: 75px; height: 75px; /* Levetta più grande */
+    background: rgba(0, 255, 255, 0.7);
     border-radius: 50%; position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%); box-shadow: 0 0 15px #00ffff; pointer-events: none;
 }
@@ -84,3 +88,31 @@ canvas { display: block; }
 
 .item-feedback { position: absolute; font-size: 35px; font-weight: bold; animation: floatUp 1.5s forwards; z-index: 15; text-shadow: 2px 2px 4px #000; text-align: center; pointer-events: none;}
 @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.1); } }
+
+/* --- OTTIMIZZAZIONI PER TELEFONI (Schermi stretti) --- */
+@media (max-width: 768px) {
+    /* Rimpicciolisce il titolo e i bottoni nel menu principale */
+    .game-title { font-size: 50px; margin-bottom: 30px; }
+    .menu-btn { font-size: 18px; padding: 15px 20px; width: 250px; }
+    
+    /* Sistema l'interfaccia in alto a sinistra per non coprire lo schermo */
+    #ui { top: 10px; left: 10px; gap: 8px; font-size: 16px; }
+    .top-row { gap: 10px; }
+    .hp-bar-bg, .shield-bar-bg { width: 110px; } /* Barre più corte */
+    .bar-icon { font-size: 18px; width: 20px; }
+    
+    #weapons-ui { gap: 8px; font-size: 16px; padding: 5px; }
+    .weapon-slot { gap: 3px; }
+    
+    /* Adatta i Menu di Livello per schermi piccoli */
+    .modal { padding: 15px; width: 95%; }
+    .upgrade-btn { padding: 10px; margin: 8px 0; }
+    .upgrade-title { font-size: 16px; }
+    .upgrade-desc { font-size: 12px; }
+
+    /* Rende le carte dei personaggi scorrevoli e più piccole */
+    .char-card { width: 140px; padding: 10px; }
+    .char-card h3 { font-size: 16px; margin: 5px 0; }
+    .lock-icon { font-size: 40px; }
+    .char-container { gap: 10px; max-height: 55vh; overflow-y: auto; padding: 10px; }
+}
