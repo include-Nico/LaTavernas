@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survivor-like: Forme Geometriche</title>
+    <title>Survivor-like: Raggi Gamma & Segreti</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,6 +14,8 @@
         <button class="menu-btn" onclick="startGame()">GIOCA</button>
         <button class="menu-btn" onclick="showCharacterSelect()">PERSONAGGI</button>
         <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">CONTROLLI: PC</button>
+        
+        <button class="settings-gear" onclick="showSettings()">⚙️</button>
     </div>
 
     <div id="character-select" class="fullscreen-menu" style="display: none;">
@@ -58,6 +60,13 @@
     </div>
     
     <canvas id="gameCanvas" style="display: none;"></canvas>
+
+    <div id="settings-modal" class="modal">
+        <h2 style="color: #fff; margin-top:0;">CODICE SEGRETO</h2>
+        <input type="text" id="cheat-input" placeholder="Inserisci codice...">
+        <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Sblocca</span></button>
+        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="closeSettings()"><span class="upgrade-title">Chiudi</span></button>
+    </div>
 
     <div id="pause-modal" class="modal">
         <h2 style="color: #fff; margin-top:0; font-size: 35px;">PAUSA</h2>
