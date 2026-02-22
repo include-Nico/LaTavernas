@@ -21,6 +21,7 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
+// FUNZIONE MATEMATICA SALVAVITA: Controlla se un punto tocca un segmento di linea
 function distToSegment(px, py, x1, y1, x2, y2) {
     let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     if (l2 === 0) return Math.hypot(px - x1, py - y1);
@@ -191,9 +192,11 @@ function update() {
 
     beams.forEach(b => b.life--); beams = beams.filter(b => b.life > 0);
 
-    // GESTIONE PROIETTILI E COLLISIONI (Granata e Normali)
+    // GESTIONE PROIETTILI CON COLLISIONE CONTINUA (Anti-Tunneling)
     for (let i = bullets.length - 1; i >= 0; i--) { 
-        let b = bullets[i]; b.x += b.vx; b.y += b.vy; 
+        let b = bullets[i]; 
+        let oldX = b.x; let oldY = b.y;
+        b.x += b.vx; b.y += b.vy; 
         
         let outOfRange = Math.hypot(b.x - b.startX, b.y - b.startY) > b.range;
         if (outOfRange) { 
@@ -204,7 +207,8 @@ function update() {
         let hitRock = false;
         for (let ri = rocks.length - 1; ri >= 0; ri--) { 
             let r = rocks[ri]; 
-            if (Math.hypot(b.x - r.x, b.y - r.y) < r.size + b.size/2) { 
+            // Controllo Linea (Proiettile) contro Cerchio (Roccia) per evitare Ghost Bullets
+            if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size + b.size/2 + 5) { 
                 if (b.weaponId === 'granata') {
                     explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20});
                 } else {
@@ -219,7 +223,7 @@ function update() {
 
     // GESTIONE ESPLOSIONI BOMBE (AoE)
     explosions.forEach(exp => {
-        if (exp.life === exp.maxLife) { // Applica danni solo al primo frame dell'esplosione
+        if (exp.life === exp.maxLife) { 
             enemies.forEach(e => {
                 if (!e.dead && Math.hypot(e.x - exp.x, e.y - exp.y) < exp.radius + e.size) {
                     e.hp -= exp.damage; e.hitTimer = 5;
@@ -236,7 +240,7 @@ function update() {
     });
     explosions = explosions.filter(e => e.life > 0);
     
-    for (let i = enemyBullets.length - 1; i >= 0; i--) { let b = enemyBullets[i]; b.x += b.vx; b.y += b.vy; if (Math.hypot(b.x - player.x, b.y - player.y) > 1500) { enemyBullets.splice(i, 1); continue; } let hitRock = false; for (let r of rocks) { if (Math.hypot(b.x - r.x, b.y - r.y) < r.size) { hitRock = true; break; } } if(hitRock) { enemyBullets.splice(i, 1); continue; } if (Math.hypot(b.x - player.x, b.y - player.y) < player.size + 5) { damagePlayer(b.damage); enemyBullets.splice(i, 1); } }
+    for (let i = enemyBullets.length - 1; i >= 0; i--) { let b = enemyBullets[i]; let oldX = b.x; let oldY = b.y; b.x += b.vx; b.y += b.vy; if (Math.hypot(b.x - player.x, b.y - player.y) > 1500) { enemyBullets.splice(i, 1); continue; } let hitRock = false; for (let r of rocks) { if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size) { hitRock = true; break; } } if(hitRock) { enemyBullets.splice(i, 1); continue; } if (distToSegment(player.x, player.y, oldX, oldY, b.x, b.y) < player.size + 5) { damagePlayer(b.damage); enemyBullets.splice(i, 1); } }
     if (Math.random() < 0.0008 && chests.length < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false }); }
     for (let i = chests.length - 1; i >= 0; i--) { let c = chests[i]; if (Math.hypot(player.x - c.x, player.y - c.y) < player.size + c.size) { chests.splice(i, 1); if (c.isSpecial) { showBossRelicModal(); } else { let rand = Math.random(); if (rand < 0.4) { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); updateBarsUI(); showItemFeedback("✚ CURA", "#00ff00"); } else if (rand < 0.7) { let sd = Math.max(canvas.width, canvas.height); enemies.forEach(e => { if(Math.hypot(e.x - player.x, e.y - player.y) < sd) { if (e.type !== 'miniboss') e.hp -= 10000; else e.hp -= 500; e.hitTimer = 5; } }); showItemFeedback("💣 BOMBA!", "#ff4500"); } else { showItemFeedback("⬆️ POTENZIAMENTO!", "#ffff00"); freeUpgrade(); } } } }
     
@@ -270,9 +274,11 @@ function update() {
         if (e.type === 'shooter') { e.fireTimer++; if (e.fireTimer >= 100) { enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*5, vy: Math.sin(angle)*5, damage: 10 }); e.fireTimer = 0; } } 
         if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { damagePlayer(0.5); } 
         
+        // Controllo Proiettili contro Nemici con COLLISIONE CONTINUA
         for (let bi = bullets.length - 1; bi >= 0; bi--) { 
             let b = bullets[bi]; 
-            if (Math.hypot(b.x - e.x, b.y - e.y) < e.size + b.size/2) { 
+            // Controllo Linea contro Cerchio
+            if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size/2 + 5) { 
                 if (b.weaponId === 'granata') {
                     explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20});
                 } else {
@@ -321,7 +327,6 @@ function draw() {
     ctx.strokeStyle = '#222'; ctx.lineWidth = 2; let gridSize = 100; let offsetX = camX % gridSize; let offsetY = camY % gridSize; for(let x = -offsetX; x < canvas.width; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); } for(let y = -offsetY; y < canvas.height; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
     ctx.fillStyle = '#666'; ctx.strokeStyle = '#444'; ctx.lineWidth = 4; rocks.forEach(r => { ctx.beginPath(); ctx.arc(r.x - camX, r.y - camY, r.size, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
     
-    // Disegno Esplosioni (Sotto le casse ma sopra il terreno)
     explosions.forEach(exp => {
         let alpha = exp.life / exp.maxLife;
         ctx.fillStyle = `rgba(255, 80, 0, ${alpha * 0.5})`;
@@ -378,9 +383,7 @@ function draw() {
         let handOffsetY = (index === 0) ? 15 : -15; 
         ctx.translate(15, handOffsetY); 
         
-        if (Math.abs(angle) > Math.PI / 2) {
-            ctx.scale(1, -1);
-        }
+        if (Math.abs(angle) > Math.PI / 2) { ctx.scale(1, -1); }
         
         if (WEAPON_MODELS[w.id]) { WEAPON_MODELS[w.id](ctx, w.weaponSize, w.color); }
         ctx.restore();
