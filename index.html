@@ -3,31 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survivor-like: Il Gioco</title>
+    <title>Survivor-like: Eroi Geometrici</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="ui">
-        <div class="top-row">
-            <div>Livello: <span id="lvl">1</span></div>
-            <div class="bars-container">
-                <div class="bar-row">
-                    <span class="bar-icon">❤</span>
-                    <div class="hp-bar-bg"><div id="hp-bar-fill"></div></div>
-                </div>
-                <div class="bar-row" id="shield-ui">
-                    <span class="bar-icon">🛡️</span>
-                    <div class="shield-bar-bg"><div id="shield-bar-fill"></div></div>
-                </div>
-            </div>
-        </div>
-        <div id="weapons-ui"></div>
+    <div id="main-menu" class="fullscreen-menu">
+        <h1 class="game-title">GEOMETRIC<br>SURVIVOR</h1>
+        <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
+        <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
     </div>
 
-    <div id="xp-bar-container"><div id="xp-bar"></div></div>
+    <div id="character-select" class="fullscreen-menu" style="display: none;">
+        <h2>Scegli il tuo Eroe</h2>
+        <div id="char-cards-container" class="char-container">
+            </div>
+        <button class="menu-btn" style="margin-top: 30px; background: #555;" onclick="backToMenu()">Torna al Menu</button>
+    </div>
+
+    <div id="game-over-screen" class="fullscreen-menu" style="display: none; background: rgba(20, 0, 0, 0.9);">
+        <h1 style="color: #ff3300; font-size: 60px; margin-bottom: 10px;">GAME OVER</h1>
+        <h2 style="color: #fff;">Sei sopravvissuto fino al Livello <span id="final-level" style="color: #00ffff;">1</span></h2>
+        <button class="menu-btn" onclick="startGame()">🔄 RIGIOCA</button>
+        <button class="menu-btn" style="background: #555;" onclick="backToMenu()">Torna al Menu</button>
+    </div>
+
+    <div id="game-ui" style="display: none;">
+        <div id="ui">
+            <div class="top-row">
+                <div>Livello: <span id="lvl">1</span></div>
+                <div class="bars-container">
+                    <div class="bar-row">
+                        <span class="bar-icon">❤</span>
+                        <div class="hp-bar-bg"><div id="hp-bar-fill"></div></div>
+                    </div>
+                    <div class="bar-row" id="shield-ui">
+                        <span class="bar-icon">🛡️</span>
+                        <div class="shield-bar-bg"><div id="shield-bar-fill"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div id="weapons-ui"></div>
+        </div>
+        <div id="xp-bar-container"><div id="xp-bar"></div></div>
+    </div>
     
-    <canvas id="gameCanvas"></canvas>
+    <canvas id="gameCanvas" style="display: none;"></canvas>
 
     <div id="levelup-modal" class="modal">
         <h2 id="levelup-title" style="color: #00ffff; margin-top:0;">Livello Superato!</h2>
