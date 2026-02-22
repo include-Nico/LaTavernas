@@ -20,74 +20,70 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// --- MODELLI DELLE ARMI (Colori fisici per non confondersi col personaggio) ---
+// --- MODELLI DELLE ARMI ---
 const WEAPON_MODELS = {
     pistola: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#bbbbbb"; // Metallo chiaro
-        ctx.fillRect(0, -s/4, s*1.5, s/2); // Canna
-        ctx.fillStyle = "#444444"; // Impugnatura scura
+        ctx.fillStyle = "#bbbbbb"; 
+        ctx.fillRect(0, -s/4, s*1.5, s/2); 
+        ctx.fillStyle = "#444444"; 
         ctx.fillRect(0, s/4, s/2, s/1.5); 
     },
     fucile: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#333333"; // Canna scura
+        ctx.fillStyle = "#333333"; 
         ctx.fillRect(0, -s/6, s*2, s/3); 
-        ctx.fillStyle = "#111111"; // Mirino
+        ctx.fillStyle = "#111111"; 
         ctx.fillRect(s, -s/2, s/4, s/3); 
-        ctx.fillStyle = "#5c3a21"; // Calcio in legno
+        ctx.fillStyle = "#5c3a21"; 
         ctx.fillRect(-s/2, s/6, s, s/2.5); 
     },
     bastone: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#8B4513"; // Bastone in legno
+        ctx.fillStyle = "#8B4513"; 
         ctx.fillRect(0, -s/8, s*1.5, s/4); 
-        ctx.fillStyle = bulletColor; // Sfera magica luminosa (colore del proiettile)
+        ctx.fillStyle = bulletColor; 
         ctx.shadowBlur = 10; ctx.shadowColor = bulletColor;
         ctx.beginPath(); ctx.arc(s*1.5, 0, s/1.5, 0, Math.PI*2); ctx.fill(); 
         ctx.shadowBlur = 0;
     },
     laser: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#ffffff"; // Corpo fucile hi-tech
+        ctx.fillStyle = "#ffffff"; 
         ctx.fillRect(0, -s/3, s*1.5, s/1.5); 
-        ctx.fillStyle = bulletColor; // Dettagli al neon
+        ctx.fillStyle = bulletColor; 
         ctx.fillRect(s/2, -s/4, s/2, s/2);
         ctx.fillStyle = "#222222"; 
-        ctx.fillRect(-s/4, s/3, s/2, s/2); // Calcio
+        ctx.fillRect(-s/4, s/3, s/2, s/2); 
     },
     granata: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#2a4d20"; // Verde militare
+        ctx.fillStyle = "#2a4d20"; 
         ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); 
         ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); // Miccia
+        ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); 
     },
     razzo: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#445555"; // Tubo lanciarazzi
+        ctx.fillStyle = "#445555"; 
         ctx.fillRect(-s/2, -s/4, s*2, s/2); 
-        ctx.fillStyle = "#222222"; // Calcio
+        ctx.fillStyle = "#222222"; 
         ctx.fillRect(-s/2, s/4, s/2, s/2); 
-        ctx.fillStyle = bulletColor; // Punta del missile pronta a partire
+        ctx.fillStyle = bulletColor; 
         ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); 
     },
     freezer: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#eeeeee"; // Canna chiara
+        ctx.fillStyle = "#eeeeee"; 
         ctx.fillRect(0, -s/4, s*1.2, s/2); 
-        ctx.fillStyle = "#333333"; // Impugnatura
+        ctx.fillStyle = "#333333"; 
         ctx.fillRect(0, s/4, s/2, s/1.5); 
-        ctx.fillStyle = bulletColor; // Serbatoio ghiaccio azzurro
+        ctx.fillStyle = bulletColor; 
         ctx.beginPath(); ctx.arc(-s/4, 0, s/1.5, 0, Math.PI*2); ctx.fill(); 
     }
 };
 
-// --- DATABASE ARMI (Aggiornato con offset bocca di fuoco) ---
-// muzzleOffset: quanto lontano dal centro del giocatore nasce il proiettile
 const WEAPONS_DB = {
-    // Modificato colore pistola da "yellow" a "silver"
-    pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, size: 12, color: "silver", muzzleOffset: 20 },
-    fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, size: 15, color: "white", muzzleOffset: 35 },
-    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, size: 18, color: "#ff4500", muzzleOffset: 35 },
-    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 25, range: 900, speed: 25, size: 14, color: "cyan", muzzleOffset: 30 },
-    // Modificato colore granata da "#000" a "#888"
-    granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  size: 16, color: "#888", muzzleOffset: 15 },
-    razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, size: 20, color: "orange", muzzleOffset: 45 },
-    freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, size: 15, color: "#aaddff", muzzleOffset: 25 }
+    pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, weaponSize: 15, bulletSize: 5, color: "silver", muzzleOffset: 25 },
+    fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, weaponSize: 22, bulletSize: 3, color: "white", muzzleOffset: 45 },
+    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, weaponSize: 25, bulletSize: 15, color: "#ff4500", muzzleOffset: 40 },
+    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 25, range: 900, speed: 25, weaponSize: 20, bulletSize: 4, color: "cyan", muzzleOffset: 35 },
+    granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  weaponSize: 16, bulletSize: 12, color: "#888", muzzleOffset: 15 },
+    razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, weaponSize: 25, bulletSize: 14, color: "orange", muzzleOffset: 55 },
+    freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, weaponSize: 20, bulletSize: 10, color: "#aaddff", muzzleOffset: 25 }
 };
 
 const CHARACTERS = [
@@ -150,8 +146,10 @@ function handleJoyEnd(e) { isDraggingJoy = false; joyStick.style.transform = `tr
 
 function updateBarsUI() { document.getElementById('hp-bar-fill').style.width = (Math.max(0, player.hp) / player.maxHp * 100) + '%'; if(player.maxShield > 0) { document.getElementById('shield-bar-fill').style.width = (Math.max(0, player.shield) / player.maxShield * 100) + '%'; } }
 function updateWeaponsUI() { const ui = document.getElementById('weapons-ui'); ui.innerHTML = ''; player.weapons.forEach(w => { ui.innerHTML += `<div class="weapon-slot" style="color:${w.color}">${w.name} <span class="weapon-lvl">Lv.${w.level}</span></div>`; }); }
+
 function damagePlayer(amount) { player.lastHitTimer = 0; if (player.shield > 0) { player.shield -= amount; if (player.shield < 0) { player.hp += player.shield; player.shield = 0; } } else { player.hp -= amount; } updateBarsUI(); if(player.hp <= 0) triggerGameOver(); }
 function giveWeapon(weaponData) { player.weapons.push({ ...weaponData, level: 1, currentDamage: weaponData.baseDamage, currentFireRate: weaponData.fireRate, fireTimer: 0 }); updateWeaponsUI(); }
+
 function isPositionFree(x, y, radius) { for (let r of rocks) { if (Math.hypot(x - r.x, y - r.y) < radius + r.size + 10) return false; } return true; }
 function showItemFeedback(text, color) { let el = document.createElement('div'); el.className = 'item-feedback'; el.innerHTML = text; el.style.color = color; el.style.left = (canvas.width/2 - 150) + 'px'; el.style.top = (canvas.height/2 - 80) + 'px'; el.style.width = "300px"; document.body.appendChild(el); setTimeout(() => el.remove(), 1500); }
 
@@ -169,11 +167,11 @@ function update() {
     if (player.hasOrbs) { player.orbAngle += 0.05; let orbDist = 100; let o1x = player.x + Math.cos(player.orbAngle)*orbDist; let o1y = player.y + Math.sin(player.orbAngle)*orbDist; let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*orbDist; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*orbDist; if (frameCount % 4 === 0) { player.orbTrail.push({x: o1x, y: o1y, life: 60}); player.orbTrail.push({x: o2x, y: o2y, life: 60}); } player.orbTrail.forEach(t => { t.life--; enemies.forEach(e => { if (Math.hypot(e.x - t.x, e.y - t.y) < e.size + 10) e.hp -= 0.6; }); }); player.orbTrail = player.orbTrail.filter(t => t.life > 0); }
 
     player.miniMes.forEach((m, index) => { let targetAngle = (index * Math.PI * 2) / Math.max(1, player.miniMes.length) + (frameCount * 0.02); let tx = player.x + Math.cos(targetAngle) * 60; let ty = player.y + Math.sin(targetAngle) * 60; m.x += (tx - m.x) * 0.1; m.y += (ty - m.y) * 0.1; m.fireTimer++;
-        if (m.fireTimer >= 40) { let targets = enemies.filter(t => Math.hypot(t.x - m.x, t.y - m.y) <= 400); if (targets.length > 0) { let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - m.x, curr.y - m.y) < Math.hypot(prev.x - m.x, prev.y - m.y) ? curr : prev); let angle = Math.atan2(closest.y - m.y, closest.x - m.x); bullets.push({ x: m.x, y: m.y, startX: m.x, startY: m.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 8, size: 5, color: "cyan", range: 400, weaponId: 'laser' }); m.fireTimer = 0; } }
+        if (m.fireTimer >= 40) { let targets = enemies.filter(t => Math.hypot(t.x - m.x, t.y - m.y) <= 400); if (targets.length > 0) { let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - m.x, curr.y - m.y) < Math.hypot(prev.x - m.x, prev.y - m.y) ? curr : prev); let angle = Math.atan2(closest.y - m.y, closest.x - m.x); bullets.push({ x: m.x, y: m.y, startX: m.x, startY: m.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 8, size: 8, color: "cyan", range: 400, weaponId: 'laser' }); m.fireTimer = 0; } }
         enemies.forEach(e => { if (Math.hypot(e.x - m.x, e.y - m.y) < e.size + 10) m.hp -= 1; }); enemyBullets.forEach((b, bi) => { if (Math.hypot(b.x - m.x, b.y - m.y) < 15) { m.hp -= b.damage; enemyBullets.splice(bi, 1); } }); });
     player.miniMes = player.miniMes.filter(m => m.hp > 0); 
 
-    // --- BALISTICA ARMI IMPUGNATE (Calcolo esatto punta arma) ---
+    // --- BALISTICA ARMI IMPUGNATE ---
     player.weapons.forEach((w, index) => {
         w.fireTimer++;
         if (w.fireTimer >= w.currentFireRate) {
@@ -182,25 +180,21 @@ function update() {
                 let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
                 
                 let angle = Math.atan2(closest.y - player.y, closest.x - player.x);
-                
-                // Offset della mano (Destra o Sinistra)
                 let handOffsetX = 15; 
-                let handOffsetY = (index === 0) ? 15 : -15; // 0 = Destra, 1 = Sinistra
+                let handOffsetY = (index === 0) ? 15 : -15; 
 
-                // Ruota le coordinate della mano in base a dove stiamo mirando
                 let cosA = Math.cos(angle);
                 let sinA = Math.sin(angle);
                 let weaponBaseX = player.x + (handOffsetX * cosA - handOffsetY * sinA);
                 let weaponBaseY = player.y + (handOffsetX * sinA + handOffsetY * cosA);
 
-                // Calcola il punto di uscita alla fine della canna
                 let spawnX = weaponBaseX + (w.muzzleOffset * cosA);
                 let spawnY = weaponBaseY + (w.muzzleOffset * sinA);
 
                 bullets.push({ 
                     x: spawnX, y: spawnY, startX: spawnX, startY: spawnY, 
                     vx: cosA * w.speed, vy: sinA * w.speed, 
-                    damage: w.currentDamage, size: w.size, color: w.color, range: w.range, weaponId: w.id 
+                    damage: w.currentDamage, size: w.bulletSize, color: w.color, range: w.range, weaponId: w.id 
                 });
                 w.fireTimer = 0;
             }
@@ -219,7 +213,6 @@ function update() {
     for (let gi = gems.length - 1; gi >= 0; gi--) { let g = gems[gi]; if (Math.hypot(player.x - g.x, player.y - g.y) > 2500) { gems.splice(gi, 1); continue; } let dist = Math.hypot(player.x - g.x, player.y - g.y); if (dist < player.pickupRange) { let angle = Math.atan2(player.y - g.y, player.x - g.x); g.x += Math.cos(angle) * 10; g.y += Math.sin(angle) * 10; } if (dist < player.size) { xp += g.isSuper ? 3 : 1; gems.splice(gi, 1); document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%'; if (xp >= xpNeeded) levelUp(); } }
 }
 
-// --- FUNZIONE DISEGNO PROIETTILI ---
 function drawProjectile(b, camX, camY) {
     ctx.shadowBlur = 10; ctx.shadowColor = b.color;
     let px = b.x - camX; let py = b.y - camY;
@@ -231,10 +224,8 @@ function drawProjectile(b, camX, camY) {
     } else if (b.weaponId === 'freezer') { 
         let s = b.size; ctx.fillStyle = b.color; ctx.save(); ctx.translate(px, py); ctx.rotate(frameCount*0.1); ctx.beginPath(); let inner=s/3; let outer=s; for(let i=0;i<8;i++){let rad=(i%2===0)?outer:inner;let a=i*Math.PI/4;ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.fill(); ctx.restore();
     } else if (b.weaponId === 'fucile' || b.weaponId === 'laser') {
-        // Traccianti veloci (linee lunghe) per armi a fuoco rapido
-        ctx.strokeStyle = b.color; ctx.lineWidth = b.size; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - b.vx*1.5, py - b.vy*1.5); ctx.stroke();
-    } else { // Pistola
+        ctx.strokeStyle = b.color; ctx.lineWidth = b.size; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - b.vx*1.5, py - b.vy*1.5); ctx.stroke();
+    } else { 
         ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(px, py, b.size, 0, Math.PI*2); ctx.fill();
     }
     ctx.shadowBlur = 0;
@@ -247,7 +238,7 @@ function draw() {
     ctx.fillStyle = '#666'; ctx.strokeStyle = '#444'; ctx.lineWidth = 4; rocks.forEach(r => { ctx.beginPath(); ctx.arc(r.x - camX, r.y - camY, r.size, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
     chests.forEach(c => { let chestWidth = c.size * 2.8; let chestHeight = c.size * 1.8; let drawX = c.x - camX - (chestWidth / 2); let drawY = c.y - camY - (chestHeight / 2); if (c.isSpecial) { ctx.shadowBlur = 20; ctx.shadowColor = 'gold'; ctx.fillStyle = 'gold'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); ctx.shadowBlur = 0; } else if(chestImg.complete && chestImg.naturalWidth > 0) { ctx.drawImage(chestImg, drawX, drawY, chestWidth, chestHeight); } else { ctx.fillStyle = '#8B4513'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); ctx.fillStyle = '#3a1c05'; ctx.fillRect(drawX, drawY + chestHeight/2 - 4, chestWidth, 8); ctx.fillStyle = 'gold'; ctx.fillRect(drawX + chestWidth/2 - 4, drawY + chestHeight/2 - 6, 8, 12); } });
 
-    if(player.hasOrbs) { let orbDist = 100; player.orbTrail.forEach(t => { ctx.fillStyle = `rgba(255, 255, 255, ${t.life/60})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, 8, 0, Math.PI*2); ctx.fill(); }); let o1x = player.x + Math.cos(player.orbAngle)*100; let o1y = player.y + Math.sin(player.orbAngle)*100; let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*100; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*100; ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white'; ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; }
+    if(player.hasOrbs) { let orbDist = 100; player.orbTrail.forEach(t => { ctx.fillStyle = `rgba(255, 255, 255, ${t.life/60})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, 8, 0, Math.PI*2); ctx.fill(); }); let o1x = player.x + Math.cos(player.orbAngle)*orbDist; let o1y = player.y + Math.sin(player.orbAngle)*orbDist; let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*orbDist; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*orbDist; ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white'; ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; }
     player.miniMes.forEach(m => { let cx = m.x - camX; let cy = m.y - camY; ctx.fillStyle = '#00aaaa'; ctx.fillRect(cx - 8, cy - 8, 16, 20); ctx.beginPath(); ctx.arc(cx, cy - 10, 8, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'red'; ctx.fillRect(cx - 10, cy - 25, 20, 4); ctx.fillStyle = 'lime'; ctx.fillRect(cx - 10, cy - 25, 20 * (m.hp/m.maxHp), 4); });
     gems.forEach(g => { ctx.fillStyle = g.isSuper ? '#ffa500' : '#00ffff'; ctx.beginPath(); ctx.arc(g.x - camX, g.y - camY, g.isSuper ? 8 : 4, 0, Math.PI*2); ctx.fill(); });
     ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff'; enemyBullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 6, 0, Math.PI*2); ctx.fill(); }); ctx.shadowBlur = 0;
@@ -258,7 +249,7 @@ function draw() {
 
     let screenCenterX = canvas.width / 2; let screenCenterY = canvas.height / 2;
     
-    // --- DISEGNO ARMI IMPUGNATE (Con Grandezze aggiornate) ---
+    // --- DISEGNO ARMI IMPUGNATE ---
     player.weapons.forEach((w, index) => {
         let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range);
         let angle = 0;
@@ -279,15 +270,6 @@ function draw() {
     ctx.fillStyle = '#00ff00'; let pBodyW = player.size * 1.2; let pBodyH = player.size * 1.8;
     if (player.charId === 0) { ctx.fillRect(screenCenterX - pBodyW/2, screenCenterY - pBodyH/2 + 5, pBodyW, pBodyH); } else if (player.charId === 1) { ctx.beginPath(); ctx.moveTo(screenCenterX - pBodyW, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX + pBodyW, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX, screenCenterY + pBodyH/2 + 5); ctx.fill(); } else if (player.charId === 2) { ctx.beginPath(); ctx.moveTo(screenCenterX, screenCenterY - pBodyH/2 + 5); ctx.lineTo(screenCenterX + pBodyW, screenCenterY + pBodyH/2 + 5); ctx.lineTo(screenCenterX - pBodyW, screenCenterY + pBodyH/2 + 5); ctx.fill(); }
     ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2, player.size * 0.6, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.pickupRange, 0, Math.PI*2); ctx.stroke();
-
-    // UI ARMI BASSO CENTRO
-    player.weapons.forEach((w, index) => {
-        let weaponX = screenCenterX + (index === 0 ? -40 : 40); let weaponY = screenCenterY + pBodyH + 40;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.beginPath(); ctx.arc(weaponX, weaponY, 25, 0, Math.PI*2); ctx.fill(); 
-        ctx.save(); ctx.translate(weaponX, weaponY); 
-        if (WEAPON_MODELS[w.id]) { WEAPON_MODELS[w.id](ctx, 20, w.color); }
-        ctx.restore();
-    });
 
     ctx.font = "bold 20px Arial"; ctx.fillStyle = "white"; ctx.shadowBlur = 5; ctx.shadowColor = "black"; ctx.fillText(activePlayerName, screenCenterX, screenCenterY - pBodyH/2 - player.size - 15); ctx.shadowBlur = 0;
 
