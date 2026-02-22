@@ -21,7 +21,7 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// FUNZIONE MATEMATICA SALVAVITA (Collisione continua proiettili)
+// FUNZIONE MATEMATICA SALVAVITA
 function distToSegment(px, py, x1, y1, x2, y2) {
     let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     if (l2 === 0) return Math.hypot(px - x1, py - y1);
@@ -35,17 +35,16 @@ const WEAPON_MODELS = {
     pistola: (ctx, s, bulletColor) => { ctx.fillStyle = "#bbbbbb"; ctx.fillRect(0, -s/4, s*1.5, s/2); ctx.fillStyle = "#444444"; ctx.fillRect(0, s/4, s/2, s/1.5); },
     fucile: (ctx, s, bulletColor) => { ctx.fillStyle = "#333333"; ctx.fillRect(0, -s/6, s*2, s/3); ctx.fillStyle = "#111111"; ctx.fillRect(s, -s/2, s/4, s/3); ctx.fillStyle = "#5c3a21"; ctx.fillRect(-s/2, s/6, s, s/2.5); },
     bastone: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#8B4513"; 
-        // MODIFICATO: Stecca più lunga (s*2.5) e leggermente più sottile (s/5)
-        ctx.fillRect(0, -s/10, s*2.5, s/5); 
+        // Bastone molto più lungo
+        ctx.fillStyle = "#6b3e1b"; 
+        ctx.fillRect(-s, -s/6, s*3.5, s/3); 
+        // Sfera Magica all'estremità
         ctx.fillStyle = bulletColor; 
-        ctx.shadowBlur = 10; 
-        ctx.shadowColor = bulletColor; 
-        ctx.beginPath(); 
-        // MODIFICATO: Cerchio spostato alla fine (s*2.5) e più piccolo (s/2.5)
-        ctx.arc(s*2.5, 0, s/2.5, 0, Math.PI*2); 
-        ctx.fill(); 
+        ctx.shadowBlur = 15; ctx.shadowColor = bulletColor; 
+        ctx.beginPath(); ctx.arc(s*2.5, 0, s/1.5, 0, Math.PI*2); ctx.fill(); 
         ctx.shadowBlur = 0; 
+        // Anello dorato intorno alla sfera
+        ctx.strokeStyle = "gold"; ctx.lineWidth = 3; ctx.stroke();
     },
     laser: (ctx, s, bulletColor) => { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, -s/3, s*1.5, s/1.5); ctx.fillStyle = bulletColor; ctx.fillRect(s/2, -s/4, s/2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/4, s/3, s/2, s/2); },
     granata: (ctx, s, bulletColor) => { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); },
@@ -56,7 +55,7 @@ const WEAPON_MODELS = {
 const WEAPONS_DB = {
     pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, weaponSize: 15, bulletSize: 5, color: "silver", muzzleOffset: 25 },
     fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, weaponSize: 22, bulletSize: 3, color: "white", muzzleOffset: 45 },
-    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, weaponSize: 25, bulletSize: 15, color: "#ff4500", muzzleOffset: 40 },
+    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, weaponSize: 20, bulletSize: 15, color: "#ff4500", muzzleOffset: 65 }, // Offset allungato
     laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 40, range: 1500, speed: 0, weaponSize: 20, bulletSize: 4, color: "lime", muzzleOffset: 35 }, 
     granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  weaponSize: 16, bulletSize: 10, color: "#888", muzzleOffset: 15 },
     razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, weaponSize: 25, bulletSize: 14, color: "orange", muzzleOffset: 55 },
@@ -180,7 +179,6 @@ function update() {
                         let endX = spawnX + Math.cos(beamAngle) * w.range; let endY = spawnY + Math.sin(beamAngle) * w.range;
 
                         enemies.forEach(e => {
-                            // Hitbox maggiorata per il laser (non puoi missarlo)
                             if (e.hp > 0 && distToSegment(e.x, e.y, spawnX, spawnY, endX, endY) < e.size + 40) {
                                 e.hp -= w.currentDamage; e.hitTimer = 5;
                                 if (e.hp <= 0 && !e.dead) { e.dead = true; if (e.type === 'miniboss') { chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true }); showItemFeedback("🏆 CASSA SUPREMA!", "gold"); } else { gems.push({ x: e.x, y: e.y, isSuper: false }); } }
@@ -284,10 +282,8 @@ function update() {
         if (e.type === 'shooter') { e.fireTimer++; if (e.fireTimer >= 100) { enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*5, vy: Math.sin(angle)*5, damage: 10 }); e.fireTimer = 0; } } 
         if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { damagePlayer(0.5); } 
         
-        // --- CONTROLLO PROIETTILI vs NEMICI: HITBOX GENEROSA ---
         for (let bi = bullets.length - 1; bi >= 0; bi--) { 
             let b = bullets[bi]; 
-            // Magnetismo: Nemico + Proiettile + 35 pixel extra di tolleranza
             if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size + 35) { 
                 if (b.weaponId === 'granata') {
                     explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20});
@@ -405,6 +401,27 @@ function draw() {
     ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2, player.size * 0.6, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.pickupRange, 0, Math.PI*2); ctx.stroke();
 
     ctx.font = "bold 20px Arial"; ctx.fillStyle = "white"; ctx.shadowBlur = 5; ctx.shadowColor = "black"; ctx.fillText(activePlayerName, screenCenterX, screenCenterY - pBodyH/2 - player.size - 15); ctx.shadowBlur = 0;
+
+    // --- BUSSOLA CASSE ---
+    if (chests.length > 0) {
+        let closestChest = chests.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
+        let dist = Math.hypot(closestChest.x - player.x, closestChest.y - player.y);
+        if (dist > 200 && dist < 1500) { 
+            let angle = Math.atan2(closestChest.y - player.y, closestChest.x - player.x);
+            ctx.save();
+            ctx.translate(screenCenterX, screenCenterY);
+            ctx.rotate(angle);
+            ctx.fillStyle = closestChest.isSpecial ? '#ffaa00' : 'gold';
+            ctx.shadowColor = closestChest.isSpecial ? 'orange' : 'yellow';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.moveTo(80, 0);   
+            ctx.lineTo(60, -15);
+            ctx.lineTo(60, 15);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
 }
 
 function buildUpgradePool() {
