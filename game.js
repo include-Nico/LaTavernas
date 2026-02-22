@@ -20,54 +20,74 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// --- MODELLI DELLE ARMI ---
+// --- MODELLI DELLE ARMI (Colori fisici per non confondersi col personaggio) ---
 const WEAPON_MODELS = {
     pistola: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#bbbbbb"; ctx.fillRect(0, -s/4, s*1.5, s/2); 
-        ctx.fillStyle = "#444444"; ctx.fillRect(0, s/4, s/2, s/1.5); 
+        ctx.fillStyle = "#bbbbbb"; // Metallo chiaro
+        ctx.fillRect(0, -s/4, s*1.5, s/2); // Canna
+        ctx.fillStyle = "#444444"; // Impugnatura scura
+        ctx.fillRect(0, s/4, s/2, s/1.5); 
     },
     fucile: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#333333"; ctx.fillRect(0, -s/6, s*2, s/3); 
-        ctx.fillStyle = "#111111"; ctx.fillRect(s, -s/2, s/4, s/3); 
-        ctx.fillStyle = "#5c3a21"; ctx.fillRect(-s/2, s/6, s, s/2.5); 
+        ctx.fillStyle = "#333333"; // Canna scura
+        ctx.fillRect(0, -s/6, s*2, s/3); 
+        ctx.fillStyle = "#111111"; // Mirino
+        ctx.fillRect(s, -s/2, s/4, s/3); 
+        ctx.fillStyle = "#5c3a21"; // Calcio in legno
+        ctx.fillRect(-s/2, s/6, s, s/2.5); 
     },
     bastone: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#8B4513"; ctx.fillRect(0, -s/8, s*1.5, s/4); 
-        ctx.fillStyle = bulletColor; ctx.shadowBlur = 10; ctx.shadowColor = bulletColor;
-        ctx.beginPath(); ctx.arc(s*1.5, 0, s/1.5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.fillStyle = "#8B4513"; // Bastone in legno
+        ctx.fillRect(0, -s/8, s*1.5, s/4); 
+        ctx.fillStyle = bulletColor; // Sfera magica luminosa (colore del proiettile)
+        ctx.shadowBlur = 10; ctx.shadowColor = bulletColor;
+        ctx.beginPath(); ctx.arc(s*1.5, 0, s/1.5, 0, Math.PI*2); ctx.fill(); 
+        ctx.shadowBlur = 0;
     },
     laser: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, -s/3, s*1.5, s/1.5); 
-        ctx.fillStyle = bulletColor; ctx.fillRect(s/2, -s/4, s/2, s/2);
-        ctx.fillStyle = "#222222"; ctx.fillRect(-s/4, s/3, s/2, s/2); 
+        ctx.fillStyle = "#ffffff"; // Corpo fucile hi-tech
+        ctx.fillRect(0, -s/3, s*1.5, s/1.5); 
+        ctx.fillStyle = bulletColor; // Dettagli al neon
+        ctx.fillRect(s/2, -s/4, s/2, s/2);
+        ctx.fillStyle = "#222222"; 
+        ctx.fillRect(-s/4, s/3, s/2, s/2); // Calcio
     },
     granata: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); 
+        ctx.fillStyle = "#2a4d20"; // Verde militare
+        ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); 
         ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); 
+        ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); // Miccia
     },
     razzo: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#445555"; ctx.fillRect(-s/2, -s/4, s*2, s/2); 
-        ctx.fillStyle = "#222222"; ctx.fillRect(-s/2, s/4, s/2, s/2); 
-        ctx.fillStyle = bulletColor; ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); 
+        ctx.fillStyle = "#445555"; // Tubo lanciarazzi
+        ctx.fillRect(-s/2, -s/4, s*2, s/2); 
+        ctx.fillStyle = "#222222"; // Calcio
+        ctx.fillRect(-s/2, s/4, s/2, s/2); 
+        ctx.fillStyle = bulletColor; // Punta del missile pronta a partire
+        ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); 
     },
     freezer: (ctx, s, bulletColor) => { 
-        ctx.fillStyle = "#eeeeee"; ctx.fillRect(0, -s/4, s*1.2, s/2); 
-        ctx.fillStyle = "#333333"; ctx.fillRect(0, s/4, s/2, s/1.5); 
-        ctx.fillStyle = bulletColor; ctx.beginPath(); ctx.arc(-s/4, 0, s/1.5, 0, Math.PI*2); ctx.fill(); 
+        ctx.fillStyle = "#eeeeee"; // Canna chiara
+        ctx.fillRect(0, -s/4, s*1.2, s/2); 
+        ctx.fillStyle = "#333333"; // Impugnatura
+        ctx.fillRect(0, s/4, s/2, s/1.5); 
+        ctx.fillStyle = bulletColor; // Serbatoio ghiaccio azzurro
+        ctx.beginPath(); ctx.arc(-s/4, 0, s/1.5, 0, Math.PI*2); ctx.fill(); 
     }
 };
 
-// --- DATABASE ARMI (Ora con Grandezze separate per Arma e Proiettile) ---
+// --- DATABASE ARMI (Aggiornato con offset bocca di fuoco) ---
+// muzzleOffset: quanto lontano dal centro del giocatore nasce il proiettile
 const WEAPONS_DB = {
-    // weaponSize: grandezza dell'arma in mano | bulletSize: spessore del proiettile
-    pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, weaponSize: 15, bulletSize: 5, color: "yellow", muzzleOffset: 25 },
-    fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, weaponSize: 22, bulletSize: 3, color: "white", muzzleOffset: 45 },
-    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, weaponSize: 25, bulletSize: 15, color: "#ff4500", muzzleOffset: 40 },
-    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 25, range: 900, speed: 25, weaponSize: 20, bulletSize: 4, color: "cyan", muzzleOffset: 35 },
-    granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  weaponSize: 16, bulletSize: 12, color: "#888888", muzzleOffset: 15 },
-    razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, weaponSize: 25, bulletSize: 14, color: "orange", muzzleOffset: 55 },
-    freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, weaponSize: 20, bulletSize: 10, color: "#aaddff", muzzleOffset: 25 }
+    // Modificato colore pistola da "yellow" a "silver"
+    pistola: { id: 'pistola', name: "Pistola", baseDamage: 12, fireRate: 45, range: 600, speed: 12, size: 12, color: "silver", muzzleOffset: 20 },
+    fucile:  { id: 'fucile',  name: "Fucile",  baseDamage: 8,  fireRate: 15, range: 800, speed: 20, size: 15, color: "white", muzzleOffset: 35 },
+    bastone: { id: 'bastone', name: "Bastone", baseDamage: 30, fireRate: 80, range: 1200, speed: 7, size: 18, color: "#ff4500", muzzleOffset: 35 },
+    laser:   { id: 'laser',   name: "Blaster", baseDamage: 18, fireRate: 25, range: 900, speed: 25, size: 14, color: "cyan", muzzleOffset: 30 },
+    // Modificato colore granata da "#000" a "#888"
+    granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  size: 16, color: "#888", muzzleOffset: 15 },
+    razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, size: 20, color: "orange", muzzleOffset: 45 },
+    freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, size: 15, color: "#aaddff", muzzleOffset: 25 }
 };
 
 const CHARACTERS = [
@@ -83,7 +103,9 @@ let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendi
 function savePlayerName() { let inputVal = document.getElementById('player-name-input').value.trim(); localStorage.setItem('survivorPlayerName', inputVal); savedName = inputVal; }
 function togglePause() {
     if (gameState !== "PLAYING") return;
-    let lvlModal = document.getElementById('levelup-modal').style.display; let bossModal = document.getElementById('boss-modal').style.display; let repModal = document.getElementById('replace-modal').style.display;
+    let lvlModal = document.getElementById('levelup-modal').style.display;
+    let bossModal = document.getElementById('boss-modal').style.display;
+    let repModal = document.getElementById('replace-modal').style.display;
     if (lvlModal === 'block' || bossModal === 'block' || repModal === 'block') return;
     let pauseModal = document.getElementById('pause-modal');
     if (paused) { paused = false; pauseModal.style.display = 'none'; } else { paused = true; pauseModal.style.display = 'block'; }
@@ -151,26 +173,34 @@ function update() {
         enemies.forEach(e => { if (Math.hypot(e.x - m.x, e.y - m.y) < e.size + 10) m.hp -= 1; }); enemyBullets.forEach((b, bi) => { if (Math.hypot(b.x - m.x, b.y - m.y) < 15) { m.hp -= b.damage; enemyBullets.splice(bi, 1); } }); });
     player.miniMes = player.miniMes.filter(m => m.hp > 0); 
 
-    // --- SPARO CON DIMENSIONI COERENTI ---
+    // --- BALISTICA ARMI IMPUGNATE (Calcolo esatto punta arma) ---
     player.weapons.forEach((w, index) => {
         w.fireTimer++;
         if (w.fireTimer >= w.currentFireRate) {
             let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range);
             if (targets.length > 0) {
                 let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
+                
                 let angle = Math.atan2(closest.y - player.y, closest.x - player.x);
-                let handOffsetX = 15; let handOffsetY = (index === 0) ? 15 : -15; 
-                let cosA = Math.cos(angle); let sinA = Math.sin(angle);
+                
+                // Offset della mano (Destra o Sinistra)
+                let handOffsetX = 15; 
+                let handOffsetY = (index === 0) ? 15 : -15; // 0 = Destra, 1 = Sinistra
+
+                // Ruota le coordinate della mano in base a dove stiamo mirando
+                let cosA = Math.cos(angle);
+                let sinA = Math.sin(angle);
                 let weaponBaseX = player.x + (handOffsetX * cosA - handOffsetY * sinA);
                 let weaponBaseY = player.y + (handOffsetX * sinA + handOffsetY * cosA);
+
+                // Calcola il punto di uscita alla fine della canna
                 let spawnX = weaponBaseX + (w.muzzleOffset * cosA);
                 let spawnY = weaponBaseY + (w.muzzleOffset * sinA);
 
-                // Usa bulletSize per la grandezza del proiettile!
                 bullets.push({ 
                     x: spawnX, y: spawnY, startX: spawnX, startY: spawnY, 
                     vx: cosA * w.speed, vy: sinA * w.speed, 
-                    damage: w.currentDamage, size: w.bulletSize, color: w.color, range: w.range, weaponId: w.id 
+                    damage: w.currentDamage, size: w.size, color: w.color, range: w.range, weaponId: w.id 
                 });
                 w.fireTimer = 0;
             }
@@ -217,7 +247,7 @@ function draw() {
     ctx.fillStyle = '#666'; ctx.strokeStyle = '#444'; ctx.lineWidth = 4; rocks.forEach(r => { ctx.beginPath(); ctx.arc(r.x - camX, r.y - camY, r.size, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
     chests.forEach(c => { let chestWidth = c.size * 2.8; let chestHeight = c.size * 1.8; let drawX = c.x - camX - (chestWidth / 2); let drawY = c.y - camY - (chestHeight / 2); if (c.isSpecial) { ctx.shadowBlur = 20; ctx.shadowColor = 'gold'; ctx.fillStyle = 'gold'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); ctx.shadowBlur = 0; } else if(chestImg.complete && chestImg.naturalWidth > 0) { ctx.drawImage(chestImg, drawX, drawY, chestWidth, chestHeight); } else { ctx.fillStyle = '#8B4513'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); ctx.fillStyle = '#3a1c05'; ctx.fillRect(drawX, drawY + chestHeight/2 - 4, chestWidth, 8); ctx.fillStyle = 'gold'; ctx.fillRect(drawX + chestWidth/2 - 4, drawY + chestHeight/2 - 6, 8, 12); } });
 
-    if(player.hasOrbs) { let orbDist = 100; player.orbTrail.forEach(t => { ctx.fillStyle = `rgba(255, 255, 255, ${t.life/60})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, 8, 0, Math.PI*2); ctx.fill(); }); let o1x = player.x + Math.cos(player.orbAngle)*orbDist; let o1y = player.y + Math.sin(player.orbAngle)*orbDist; let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*orbDist; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*orbDist; ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white'; ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; }
+    if(player.hasOrbs) { let orbDist = 100; player.orbTrail.forEach(t => { ctx.fillStyle = `rgba(255, 255, 255, ${t.life/60})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, 8, 0, Math.PI*2); ctx.fill(); }); let o1x = player.x + Math.cos(player.orbAngle)*100; let o1y = player.y + Math.sin(player.orbAngle)*100; let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*100; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*100; ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white'; ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; }
     player.miniMes.forEach(m => { let cx = m.x - camX; let cy = m.y - camY; ctx.fillStyle = '#00aaaa'; ctx.fillRect(cx - 8, cy - 8, 16, 20); ctx.beginPath(); ctx.arc(cx, cy - 10, 8, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'red'; ctx.fillRect(cx - 10, cy - 25, 20, 4); ctx.fillStyle = 'lime'; ctx.fillRect(cx - 10, cy - 25, 20 * (m.hp/m.maxHp), 4); });
     gems.forEach(g => { ctx.fillStyle = g.isSuper ? '#ffa500' : '#00ffff'; ctx.beginPath(); ctx.arc(g.x - camX, g.y - camY, g.isSuper ? 8 : 4, 0, Math.PI*2); ctx.fill(); });
     ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff'; enemyBullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 6, 0, Math.PI*2); ctx.fill(); }); ctx.shadowBlur = 0;
