@@ -21,7 +21,7 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// FUNZIONE MATEMATICA SALVAVITA: Controlla se un punto tocca un segmento di linea
+// FUNZIONE MATEMATICA SALVAVITA (Collisione continua proiettili)
 function distToSegment(px, py, x1, y1, x2, y2) {
     let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     if (l2 === 0) return Math.hypot(px - x1, py - y1);
@@ -63,16 +63,13 @@ let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendi
 
 function savePlayerName() { let inputVal = document.getElementById('player-name-input').value.trim(); localStorage.setItem('survivorPlayerName', inputVal); savedName = inputVal; }
 
-// --- SETTINGS (CODICE SEGRETO) ---
 function showSettings() { document.getElementById('settings-modal').style.display = 'block'; }
 function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 function checkCheatCode() {
     let input = document.getElementById('cheat-input').value;
     if (input === "160105") {
-        cheatUnlocked = true;
-        localStorage.setItem('survivorCheat', 'true');
-        alert("✔️ CODICE ACCETTATO!\nTutti i personaggi sono sbloccati per sempre.");
-        closeSettings();
+        cheatUnlocked = true; localStorage.setItem('survivorCheat', 'true');
+        alert("✔️ CODICE ACCETTATO!\nTutti i personaggi sono sbloccati per sempre."); closeSettings();
     } else { alert("❌ Codice errato."); }
     document.getElementById('cheat-input').value = "";
 }
@@ -171,7 +168,8 @@ function update() {
                         let endX = spawnX + Math.cos(beamAngle) * w.range; let endY = spawnY + Math.sin(beamAngle) * w.range;
 
                         enemies.forEach(e => {
-                            if (e.hp > 0 && distToSegment(e.x, e.y, spawnX, spawnY, endX, endY) < e.size + 20) {
+                            // Hitbox maggiorata per il laser (non puoi missarlo)
+                            if (e.hp > 0 && distToSegment(e.x, e.y, spawnX, spawnY, endX, endY) < e.size + 40) {
                                 e.hp -= w.currentDamage; e.hitTimer = 5;
                                 if (e.hp <= 0 && !e.dead) { e.dead = true; if (e.type === 'miniboss') { chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true }); showItemFeedback("🏆 CASSA SUPREMA!", "gold"); } else { gems.push({ x: e.x, y: e.y, isSuper: false }); } }
                             }
@@ -192,7 +190,7 @@ function update() {
 
     beams.forEach(b => b.life--); beams = beams.filter(b => b.life > 0);
 
-    // GESTIONE PROIETTILI CON COLLISIONE CONTINUA (Anti-Tunneling)
+    // GESTIONE PROIETTILI - ROCCE
     for (let i = bullets.length - 1; i >= 0; i--) { 
         let b = bullets[i]; 
         let oldX = b.x; let oldY = b.y;
@@ -207,7 +205,7 @@ function update() {
         let hitRock = false;
         for (let ri = rocks.length - 1; ri >= 0; ri--) { 
             let r = rocks[ri]; 
-            // Controllo Linea (Proiettile) contro Cerchio (Roccia) per evitare Ghost Bullets
+            // Controllo Rocce Normale
             if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size + b.size/2 + 5) { 
                 if (b.weaponId === 'granata') {
                     explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20});
@@ -274,11 +272,11 @@ function update() {
         if (e.type === 'shooter') { e.fireTimer++; if (e.fireTimer >= 100) { enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*5, vy: Math.sin(angle)*5, damage: 10 }); e.fireTimer = 0; } } 
         if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { damagePlayer(0.5); } 
         
-        // Controllo Proiettili contro Nemici con COLLISIONE CONTINUA
+        // --- CONTROLLO PROIETTILI vs NEMICI: HITBOX GENEROSA ---
         for (let bi = bullets.length - 1; bi >= 0; bi--) { 
             let b = bullets[bi]; 
-            // Controllo Linea contro Cerchio
-            if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size/2 + 5) { 
+            // Magnetismo: Nemico + Proiettile + 35 pixel extra di tolleranza
+            if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size + 35) { 
                 if (b.weaponId === 'granata') {
                     explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20});
                 } else {
