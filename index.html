@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survivor-like: Multipiataforma</title>
+    <title>Survivor-like: Pausa e Resa</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,8 +17,7 @@
 
     <div id="character-select" class="fullscreen-menu" style="display: none;">
         <h2>Scegli il tuo Eroe</h2>
-        <div id="char-cards-container" class="char-container">
-            </div>
+        <div id="char-cards-container" class="char-container"></div>
         <button class="menu-btn" style="margin-top: 30px; background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
 
@@ -46,6 +45,9 @@
             </div>
             <div id="weapons-ui"></div>
         </div>
+        
+        <button id="pause-btn" onclick="togglePause()">⏸️</button>
+        
         <div id="xp-bar-container"><div id="xp-bar"></div></div>
         
         <div id="joystick-zone" style="display: none;">
@@ -56,6 +58,12 @@
     </div>
     
     <canvas id="gameCanvas" style="display: none;"></canvas>
+
+    <div id="pause-modal" class="modal">
+        <h2 style="color: #fff; margin-top:0;">GIOCO IN PAUSA</h2>
+        <button class="upgrade-btn" onclick="togglePause()"><span class="upgrade-title">▶️ Riprendi</span></button>
+        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="surrender()"><span class="upgrade-title">🏳️ Arrenditi</span></button>
+    </div>
 
     <div id="levelup-modal" class="modal">
         <h2 id="levelup-title" style="color: #00ffff; margin-top:0;">Livello Superato!</h2>
