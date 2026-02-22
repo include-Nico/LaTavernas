@@ -1,7 +1,9 @@
-body { margin: 0; overflow: hidden; background: #111; color: white; font-family: sans-serif; user-select: none; }
+/* Impedisce la selezione e gestisce i tocchi da mobile */
+* { touch-action: none; user-select: none; box-sizing: border-box; }
+body { margin: 0; overflow: hidden; background: #111; color: white; font-family: sans-serif; }
 canvas { display: block; }
 
-/* --- MENU STYLES --- */
+/* --- MENU PRINCIPALE --- */
 .fullscreen-menu {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
     background: linear-gradient(to bottom, #1a1a2e, #000000);
@@ -10,15 +12,16 @@ canvas { display: block; }
 .game-title { font-size: 80px; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 50px; text-align: center; }
 .menu-btn {
     background: linear-gradient(145deg, #0088cc, #005599); border: 3px solid #00ffff; color: white;
-    font-size: 28px; font-weight: bold; padding: 20px 50px; margin: 15px; border-radius: 15px;
-    cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3); width: 350px;
+    font-size: 24px; font-weight: bold; padding: 15px 40px; margin: 10px; border-radius: 15px;
+    cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3); width: 300px;
 }
 .menu-btn:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0, 255, 255, 0.6); filter: brightness(1.2); }
+.settings-btn { background: linear-gradient(145deg, #8800cc, #550099); border-color: #ff00ff; box-shadow: 0 5px 15px rgba(255, 0, 255, 0.3); }
 
-/* Carte Personaggi */
-.char-container { display: flex; gap: 30px; margin-top: 20px; }
+/* --- CARTE PERSONAGGI --- */
+.char-container { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
 .char-card {
-    background: #222; border: 4px solid #555; border-radius: 15px; padding: 20px; width: 250px; text-align: center;
+    background: #222; border: 4px solid #555; border-radius: 15px; padding: 20px; width: 220px; text-align: center;
     transition: 0.3s; cursor: pointer; position: relative;
 }
 .char-card:hover { border-color: #00ffff; transform: scale(1.05); }
@@ -34,34 +37,49 @@ canvas { display: block; }
 .bar-row { display: flex; align-items: center; }
 .bar-icon { font-size: 24px; margin-right: 8px; width: 30px; text-align: center; }
 
-.hp-bar-bg { width: 200px; height: 22px; background: #333; border: 3px solid #000; border-radius: 12px; overflow: hidden; }
-#hp-bar-fill { height: 100%; background: linear-gradient(to bottom, #ff3030, #cc0000); width: 100%; transition: width 0.2s; }
+.hp-bar-bg { width: 150px; height: 20px; background: #333; border: 3px solid #000; border-radius: 12px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+#hp-bar-fill { height: 100%; background: linear-gradient(to bottom, #ff3030, #cc0000); width: 100%; transition: width 0.2s; border-radius: 10px; }
 
 #shield-ui { display: none; }
-.shield-bar-bg { width: 200px; height: 16px; background: #222; border: 2px solid #000; border-radius: 8px; overflow: hidden; }
-#shield-bar-fill { height: 100%; background: linear-gradient(to bottom, #00d4ff, #0055ff); width: 100%; transition: width 0.2s; }
+.shield-bar-bg { width: 150px; height: 16px; background: #222; border: 2px solid #000; border-radius: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,100,255,0.4); }
+#shield-bar-fill { height: 100%; background: linear-gradient(to bottom, #00d4ff, #0055ff); width: 100%; transition: width 0.2s; border-radius: 8px; }
 
-#weapons-ui { display: flex; gap: 15px; font-size: 22px; background: rgba(0,0,0,0.7); padding: 10px 15px; border-radius: 10px; border: 2px solid #555; }
-.weapon-slot { display: flex; align-items: center; gap: 8px; }
+#weapons-ui { display: flex; gap: 10px; font-size: 20px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 10px; border: 2px solid #555; width: fit-content; }
+.weapon-slot { display: flex; align-items: center; gap: 5px; }
 .weapon-lvl { font-size: 14px; color: #00ffff; font-weight: bold; }
 
 #xp-bar-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 15px; background: #222; z-index: 10; }
 #xp-bar { height: 100%; background: #00ffff; width: 0%; transition: width 0.2s; box-shadow: 0 0 10px #00ffff;}
 
-/* --- MODALI --- */
+/* --- JOYSTICK MOBILE --- */
+#joystick-zone {
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 200px; z-index: 50; display: flex; justify-content: center; align-items: center;
+}
+#joystick-base {
+    width: 130px; height: 130px; background: rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(255, 255, 255, 0.4); border-radius: 50%;
+    position: relative; box-shadow: 0 0 20px rgba(0,255,255,0.2);
+}
+#joystick-stick {
+    width: 60px; height: 60px; background: rgba(0, 255, 255, 0.7);
+    border-radius: 50%; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); box-shadow: 0 0 15px #00ffff; pointer-events: none;
+}
+
+/* --- MODALI (Menu Livello) --- */
 .modal {
     display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: linear-gradient(to bottom, #2a2a2a, #1a1a1a); padding: 35px; border: 4px solid #555; text-align: center; border-radius: 15px; z-index: 20; width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    background: linear-gradient(to bottom, #2a2a2a, #1a1a1a); padding: 30px; border: 4px solid #555; text-align: center; border-radius: 15px; z-index: 20; width: 90%; max-width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
 }
 .upgrade-btn {
     display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; 
-    width: 100%; margin: 15px 0; padding: 15px; 
+    width: 100%; margin: 10px 0; padding: 15px; 
     background: linear-gradient(145deg, #3d3d3d, #2b2b2b); border: 2px solid #444; color: white; cursor: pointer; border-radius: 10px; transition: all 0.2s;
 }
-.upgrade-btn:hover { background: linear-gradient(145deg, #4d4d4d, #3b3b3b); border-color: #00ffff; transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0, 255, 255, 0.2); }
+.upgrade-btn:hover { background: linear-gradient(145deg, #4d4d4d, #3b3b3b); border-color: #00ffff; transform: translateY(-3px); }
 .upgrade-btn.boss-btn:hover { border-color: #ffd700; box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4); } 
-
-.upgrade-title { font-size: 22px; font-weight: bold; color: #fff; }
+.upgrade-title { font-size: 20px; font-weight: bold; color: #fff; }
 .upgrade-desc { font-size: 14px; color: #bbb; }
 
 .item-feedback { position: absolute; font-size: 35px; font-weight: bold; animation: floatUp 1.5s forwards; z-index: 15; text-shadow: 2px 2px 4px #000; text-align: center; pointer-events: none;}
