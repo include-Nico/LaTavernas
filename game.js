@@ -297,7 +297,7 @@ function draw() {
     ctx.fillStyle = '#666'; ctx.strokeStyle = '#444'; ctx.lineWidth = 4;
     rocks.forEach(r => { ctx.beginPath(); ctx.arc(r.x - camX, r.y - camY, r.size, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
 
-    chests.forEach(c => {
+   chestWidth = c.size * 2.8 {
         if (c.isSpecial) { 
             ctx.shadowBlur = 20; ctx.shadowColor = 'gold'; ctx.fillStyle = 'gold'; 
             ctx.fillRect(c.x - camX - c.size, c.y - camY - c.size, c.size*2, c.size*2); ctx.shadowBlur = 0;
@@ -496,3 +496,4 @@ function cancelReplace() { document.getElementById('replace-modal').style.displa
 function finishUpgrade() { paused = false; requestAnimationFrame(update); }
 
 requestAnimationFrame(update);
+
