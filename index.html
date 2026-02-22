@@ -2,8 +2,8 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survivor-like: Eroi Geometrici</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Survivor-like: Multipiataforma</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,6 +12,7 @@
         <h1 class="game-title">GEOMETRIC<br>SURVIVOR</h1>
         <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
         <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
+        <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">🕹️ CONTROLLI: PC</button>
     </div>
 
     <div id="character-select" class="fullscreen-menu" style="display: none;">
@@ -22,8 +23,8 @@
     </div>
 
     <div id="game-over-screen" class="fullscreen-menu" style="display: none; background: rgba(20, 0, 0, 0.9);">
-        <h1 style="color: #ff3300; font-size: 60px; margin-bottom: 10px;">GAME OVER</h1>
-        <h2 style="color: #fff;">Sei sopravvissuto fino al Livello <span id="final-level" style="color: #00ffff;">1</span></h2>
+        <h1 style="color: #ff3300; font-size: 50px; margin-bottom: 10px;">GAME OVER</h1>
+        <h2 style="color: #fff;">Sopravvissuto fino al Livello <span id="final-level" style="color: #00ffff;">1</span></h2>
         <button class="menu-btn" onclick="startGame()">🔄 RIGIOCA</button>
         <button class="menu-btn" style="background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
@@ -46,6 +47,12 @@
             <div id="weapons-ui"></div>
         </div>
         <div id="xp-bar-container"><div id="xp-bar"></div></div>
+        
+        <div id="joystick-zone" style="display: none;">
+            <div id="joystick-base">
+                <div id="joystick-stick"></div>
+            </div>
+        </div>
     </div>
     
     <canvas id="gameCanvas" style="display: none;"></canvas>
