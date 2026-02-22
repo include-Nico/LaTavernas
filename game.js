@@ -3,28 +3,33 @@ const ctx = canvas.getContext('2d');
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize); resize();
 
-// --- STATO E MENU ---
 let gameState = "MENU"; 
 let paused = false; let frameCount = 0;
 let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
 let selectedCharId = 0;
-let controlMode = 'pc'; // 'pc' o 'mobile'
+let controlMode = 'pc'; 
 
 let chestImg = new Image(); chestImg.src = 'chest.png';
 
-// --- VARIABILI JOYSTICK ---
 let joyX = 0, joyY = 0;
 let isDraggingJoy = false;
 let joyBaseRect;
-const maxJoyDist = 55; // AGGIORNATO: Raggio aumentato per il joystick più grande!
+const maxJoyDist = 55; 
 const joyZone = document.getElementById('joystick-zone');
 const joyStick = document.getElementById('joystick-stick');
 
 let keys = {}; 
-window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true); 
+window.addEventListener('keydown', e => {
+    let key = e.key.toLowerCase();
+    keys[key] = true;
+    
+    // NUOVO: Scorciatoie per la Pausa da tastiera (P o Esc)
+    if (key === 'p' || e.key === 'Escape') {
+        togglePause();
+    }
+}); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// --- DATABASE GIOCO ---
 const WEAPONS_DB = {
     pistola: { id: 'pistola', name: "Pistola", icon: "🔫", baseDamage: 12, fireRate: 45, range: 600, speed: 12, size: 5, color: "yellow" },
     fucile:  { id: 'fucile',  name: "Fucile",  icon: "💥", baseDamage: 8,  fireRate: 15, range: 800, speed: 20, size: 3, color: "white" },
@@ -45,16 +50,38 @@ let player = {};
 let enemies = []; let bullets = []; let enemyBullets = []; let gems = []; let rocks = []; let chests = [];
 let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendingWeapon = null;
 
-// --- MENU & IMPOSTAZIONI ---
+// --- GESTIONE PAUSA ---
+function togglePause() {
+    if (gameState !== "PLAYING") return;
+    
+    // Non permette la pausa se c'è un altro menu aperto (Level Up, Boss, Sostituzione arma)
+    let lvlModal = document.getElementById('levelup-modal').style.display;
+    let bossModal = document.getElementById('boss-modal').style.display;
+    let repModal = document.getElementById('replace-modal').style.display;
+    if (lvlModal === 'block' || bossModal === 'block' || repModal === 'block') return;
+
+    let pauseModal = document.getElementById('pause-modal');
+    if (paused) {
+        paused = false;
+        pauseModal.style.display = 'none';
+    } else {
+        paused = true;
+        pauseModal.style.display = 'block';
+    }
+}
+
+// Funzione "Arrenditi" dal menu di pausa
+function surrender() {
+    document.getElementById('pause-modal').style.display = 'none';
+    player.hp = 0;
+    updateBarsUI();
+    triggerGameOver();
+}
+
 function toggleControls() {
     let btn = document.getElementById('btn-controls');
-    if (controlMode === 'pc') {
-        controlMode = 'mobile';
-        btn.innerText = "📱 CONTROLLI: TELEFONO";
-    } else {
-        controlMode = 'pc';
-        btn.innerText = "🕹️ CONTROLLI: PC";
-    }
+    if (controlMode === 'pc') { controlMode = 'mobile'; btn.innerText = "📱 CONTROLLI: TELEFONO"; } 
+    else { controlMode = 'pc'; btn.innerText = "🕹️ CONTROLLI: PC"; }
 }
 
 function showMenu() {
@@ -65,7 +92,6 @@ function showMenu() {
     document.getElementById('game-ui').style.display = 'none';
     canvas.style.display = 'none';
 }
-
 function backToMenu() { showMenu(); }
 
 function showCharacterSelect() {
@@ -88,10 +114,7 @@ function showCharacterSelect() {
             <p style="color:#00ffff; font-size:12px;">Armi disponibili</p>
             ${!isUnlocked ? `<div class="lock-icon">🔒<br><span style="font-size:14px;">Liv. ${char.reqLevel}</span></div>` : ''}
         `;
-        
-        if (isUnlocked) {
-            card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); };
-        }
+        if (isUnlocked) { card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); }; }
         container.appendChild(card);
     });
 }
@@ -104,10 +127,8 @@ function startGame() {
     document.getElementById('game-ui').style.display = 'block';
     canvas.style.display = 'block';
     
-    // Mostra Joystick se mobile
     document.getElementById('joystick-zone').style.display = (controlMode === 'mobile') ? 'flex' : 'none';
 
-    // RESET 
     player = { 
         x: 0, y: 0, size: 20, speed: 4, hp: 100, maxHp: 100, pickupRange: 80, weapons: [],
         shield: 0, maxShield: 0, lastHitTimer: 0, hasOrbs: false, orbAngle: 0, orbTrail: [], miniMes: [], lastBossLevel: 0, charId: selectedCharId
@@ -138,42 +159,22 @@ function triggerGameOver() {
     document.getElementById('game-over-screen').style.display = 'flex';
 }
 
-// --- EVENTI JOYSTICK TOUCH ---
 joyZone.addEventListener('touchstart', handleJoyStart, {passive: false});
 joyZone.addEventListener('touchmove', handleJoyMove, {passive: false});
 joyZone.addEventListener('touchend', handleJoyEnd);
 
-function handleJoyStart(e) {
-    e.preventDefault();
-    joyBaseRect = document.getElementById('joystick-base').getBoundingClientRect();
-    isDraggingJoy = true;
-    handleJoyMove(e);
-}
+function handleJoyStart(e) { e.preventDefault(); joyBaseRect = document.getElementById('joystick-base').getBoundingClientRect(); isDraggingJoy = true; handleJoyMove(e); }
 function handleJoyMove(e) {
     if (!isDraggingJoy) return;
-    e.preventDefault();
-    let touch = e.touches[0];
-    let centerX = joyBaseRect.left + joyBaseRect.width / 2;
-    let centerY = joyBaseRect.top + joyBaseRect.height / 2;
-    let dx = touch.clientX - centerX;
-    let dy = touch.clientY - centerY;
-    let dist = Math.hypot(dx, dy);
-    
-    // Limita la levetta dentro al cerchio
+    e.preventDefault(); let touch = e.touches[0];
+    let centerX = joyBaseRect.left + joyBaseRect.width / 2; let centerY = joyBaseRect.top + joyBaseRect.height / 2;
+    let dx = touch.clientX - centerX; let dy = touch.clientY - centerY; let dist = Math.hypot(dx, dy);
     if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; }
-    
     joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    
-    // Valore normalizzato tra -1 e 1 per il movimento del giocatore
     joyX = dx / maxJoyDist; joyY = dy / maxJoyDist;
 }
-function handleJoyEnd(e) {
-    isDraggingJoy = false;
-    joyStick.style.transform = `translate(-50%, -50%)`;
-    joyX = 0; joyY = 0;
-}
+function handleJoyEnd(e) { isDraggingJoy = false; joyStick.style.transform = `translate(-50%, -50%)`; joyX = 0; joyY = 0; }
 
-// --- FUNZIONI DI GIOCO ---
 function updateBarsUI() { 
     document.getElementById('hp-bar-fill').style.width = (Math.max(0, player.hp) / player.maxHp * 100) + '%'; 
     if(player.maxShield > 0) { document.getElementById('shield-bar-fill').style.width = (Math.max(0, player.shield) / player.maxShield * 100) + '%'; }
@@ -196,7 +197,6 @@ function showItemFeedback(text, color) {
     document.body.appendChild(el); setTimeout(() => el.remove(), 1500);
 }
 
-// --- LOGICA PRINCIPALE ---
 function gameLoop() {
     if (gameState !== "PLAYING") return;
     if (!paused) { update(); draw(); }
@@ -206,22 +206,17 @@ function gameLoop() {
 function update() {
     frameCount++;
 
-    // Movimento Dinamico (PC vs Telefono)
     let dx = 0; let dy = 0;
     if (controlMode === 'pc') {
         if (keys['w'] || keys['arrowup']) dy -= 1;
         if (keys['s'] || keys['arrowdown']) dy += 1;
         if (keys['a'] || keys['arrowleft']) dx -= 1;
         if (keys['d'] || keys['arrowright']) dx += 1;
-        
-        // Normalizzazione Diagonale
         if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; }
     } else {
-        // Usa i valori normalizzati del joystick Touch
         dx = joyX; dy = joyY;
     }
 
-    // Applica velocità
     let moveX = dx * player.speed; let moveY = dy * player.speed;
     let canMoveX = true; let canMoveY = true;
     for (let r of rocks) {
@@ -411,7 +406,8 @@ function draw() {
         let o1x = player.x + Math.cos(player.orbAngle)*orbDist; let o1y = player.y + Math.sin(player.orbAngle)*orbDist;
         let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*orbDist; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*orbDist;
         ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white';
-        ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(o1x - camX, o1y - camY, 5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(o2x - camX, o2y - camY, 5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
     }
 
     player.miniMes.forEach(m => {
