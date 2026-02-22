@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survivor-like: Registrazione Nome</title>
+    <title>Survivor-like: Forme Geometriche</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="main-menu" class="fullscreen-menu">
         <h1 class="game-title">GEOMETRIC<br>SURVIVOR</h1>
-        
         <input type="text" id="player-name-input" placeholder="INSERISCI NOME..." maxlength="12" onkeyup="savePlayerName()" onblur="savePlayerName()">
-        
-        <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
-        <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
-        <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">🕹️ CONTROLLI: PC</button>
+        <button class="menu-btn" onclick="startGame()">GIOCA</button>
+        <button class="menu-btn" onclick="showCharacterSelect()">PERSONAGGI</button>
+        <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">CONTROLLI: PC</button>
     </div>
 
     <div id="character-select" class="fullscreen-menu" style="display: none;">
@@ -27,7 +25,7 @@
     <div id="game-over-screen" class="fullscreen-menu" style="display: none; background: rgba(20, 0, 0, 0.9);">
         <h1 style="color: #ff3300; font-size: 50px; margin-bottom: 10px;">GAME OVER</h1>
         <h2 style="color: #fff;">Sopravvissuto fino al Livello <span id="final-level" style="color: #00ffff;">1</span></h2>
-        <button class="menu-btn" onclick="startGame()">🔄 RIGIOCA</button>
+        <button class="menu-btn" onclick="startGame()">RIGIOCA</button>
         <button class="menu-btn" style="background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
 
@@ -37,11 +35,11 @@
                 <div>Livello: <span id="lvl">1</span></div>
                 <div class="bars-container">
                     <div class="bar-row">
-                        <span class="bar-icon">❤</span>
+                        <span class="bar-icon" style="color:red;">❤</span>
                         <div class="hp-bar-bg"><div id="hp-bar-fill"></div></div>
                     </div>
                     <div class="bar-row" id="shield-ui">
-                        <span class="bar-icon">🛡️</span>
+                        <span class="bar-icon" style="color:cyan;">🛡️</span>
                         <div class="shield-bar-bg"><div id="shield-bar-fill"></div></div>
                     </div>
                 </div>
@@ -49,7 +47,7 @@
             <div id="weapons-ui"></div>
         </div>
         
-        <button id="pause-btn" onclick="togglePause()">⏸️</button>
+        <button id="pause-btn" onclick="togglePause()">I I</button>
         <div id="xp-bar-container"><div id="xp-bar"></div></div>
         
         <div id="joystick-zone" style="display: none;">
@@ -62,9 +60,9 @@
     <canvas id="gameCanvas" style="display: none;"></canvas>
 
     <div id="pause-modal" class="modal">
-        <h2 style="color: #fff; margin-top:0; font-size: 35px;">GIOCO IN PAUSA</h2>
-        <button class="upgrade-btn" onclick="togglePause()"><span class="upgrade-title">▶️ Riprendi</span></button>
-        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="surrender()"><span class="upgrade-title">🏳️ Arrenditi</span></button>
+        <h2 style="color: #fff; margin-top:0; font-size: 35px;">PAUSA</h2>
+        <button class="upgrade-btn" onclick="togglePause()"><span class="upgrade-title">Riprendi</span></button>
+        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="surrender()"><span class="upgrade-title">Arrenditi</span></button>
     </div>
 
     <div id="levelup-modal" class="modal">
