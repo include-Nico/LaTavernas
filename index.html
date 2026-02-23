@@ -14,17 +14,13 @@
         <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
         <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
         <button class="menu-btn" onclick="showEquipmentMenu()" style="border-color: #bf00ff; box-shadow: 0 5px 15px rgba(191, 0, 255, 0.3);">🎒 EQUIPAGGIAMENTO</button>
-        <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">🕹️ CONTROLLI: PC</button>
         
         <button class="settings-gear" onclick="showSettings()">⚙️</button>
     </div>
 
     <div id="equipment-select" class="fullscreen-menu" style="display: none;">
         <h2>Armeria <span style="color:#bf00ff; text-shadow: 0 0 10px #bf00ff;">💎 <span id="menu-crystal-count">0</span></span></h2>
-        
-        <div class="equip-section" id="equip-container">
-            </div>
-
+        <div class="equip-section" id="equip-container"></div>
         <button class="menu-btn" style="margin-top: 20px; background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
 
@@ -50,6 +46,7 @@
                     <div class="bar-row">
                         <span class="bar-icon" style="color:red;">❤</span>
                         <div class="hp-bar-bg"><div id="hp-bar-fill"></div></div>
+                        <span id="amulet-icon-ui" style="font-size: 24px; margin-left: 10px; text-shadow: 0 0 10px #fff;"></span>
                     </div>
                     <div class="bar-row" id="shield-ui">
                         <span class="bar-icon" style="color:cyan;">🛡️</span>
@@ -76,7 +73,7 @@
     <div id="settings-modal" class="modal">
         <h2 style="color: #fff; margin-top:0;">CODICE SEGRETO</h2>
         <input type="text" id="cheat-input" placeholder="Inserisci codice...">
-        <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Sblocca Tutti</span></button>
+        <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Sblocca Tutto</span></button>
         <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="closeSettings()"><span class="upgrade-title">Chiudi</span></button>
     </div>
 
