@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survivor-like: Raggi Gamma & Segreti</title>
+    <title>Survivor-like</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,11 +11,21 @@
     <div id="main-menu" class="fullscreen-menu">
         <h1 class="game-title">GEOMETRIC<br>SURVIVOR</h1>
         <input type="text" id="player-name-input" placeholder="INSERISCI NOME..." maxlength="12" onkeyup="savePlayerName()" onblur="savePlayerName()">
-        <button class="menu-btn" onclick="startGame()">GIOCA</button>
-        <button class="menu-btn" onclick="showCharacterSelect()">PERSONAGGI</button>
-        <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">CONTROLLI: PC</button>
+        <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
+        <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
+        <button class="menu-btn" onclick="showEquipmentMenu()" style="border-color: #bf00ff; box-shadow: 0 5px 15px rgba(191, 0, 255, 0.3);">🎒 EQUIPAGGIAMENTO</button>
+        <button class="menu-btn settings-btn" id="btn-controls" onclick="toggleControls()">🕹️ CONTROLLI: PC</button>
         
         <button class="settings-gear" onclick="showSettings()">⚙️</button>
+    </div>
+
+    <div id="equipment-select" class="fullscreen-menu" style="display: none;">
+        <h2>Armeria <span style="color:#bf00ff; text-shadow: 0 0 10px #bf00ff;">💎 <span id="menu-crystal-count">0</span></span></h2>
+        
+        <div class="equip-section" id="equip-container">
+            </div>
+
+        <button class="menu-btn" style="margin-top: 20px; background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
 
     <div id="character-select" class="fullscreen-menu" style="display: none;">
@@ -27,7 +37,8 @@
     <div id="game-over-screen" class="fullscreen-menu" style="display: none; background: rgba(20, 0, 0, 0.9);">
         <h1 style="color: #ff3300; font-size: 50px; margin-bottom: 10px;">GAME OVER</h1>
         <h2 style="color: #fff;">Sopravvissuto fino al Livello <span id="final-level" style="color: #00ffff;">1</span></h2>
-        <button class="menu-btn" onclick="startGame()">RIGIOCA</button>
+        <h3 style="color: #bf00ff;">Cristalli Trovati: 💎 <span id="run-crystals">0</span></h3>
+        <button class="menu-btn" onclick="startGame()">🔄 RIGIOCA</button>
         <button class="menu-btn" style="background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
 
@@ -46,6 +57,7 @@
                     </div>
                 </div>
             </div>
+            <div id="crystal-ui" style="color:#bf00ff; font-size: 24px; font-weight:bold; text-shadow:0 0 10px #bf00ff; margin-top: 10px;">💎 <span id="crystal-count">0</span></div>
             <div id="weapons-ui"></div>
         </div>
         
@@ -64,7 +76,7 @@
     <div id="settings-modal" class="modal">
         <h2 style="color: #fff; margin-top:0;">CODICE SEGRETO</h2>
         <input type="text" id="cheat-input" placeholder="Inserisci codice...">
-        <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Sblocca</span></button>
+        <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Sblocca Tutti</span></button>
         <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="closeSettings()"><span class="upgrade-title">Chiudi</span></button>
     </div>
 
