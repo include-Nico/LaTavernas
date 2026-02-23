@@ -67,37 +67,32 @@ function savePlayerName() { let inputVal = document.getElementById('player-name-
 function showSettings() { document.getElementById('settings-modal').style.display = 'block'; }
 function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 
-// --- GESTIONE CODICI SEGRETI ---
+// --- GESTIONE CODICI SEGRETI AGGIORNATA ---
 function checkCheatCode() {
-    let input = document.getElementById('cheat-input').value.trim().toLowerCase();
+    let input = document.getElementById('cheat-input').value.trim().toLowerCase(); // Rende case-insensitive
     
     if (input === "160105") { 
-        cheatUnlocked = true; localStorage.setItem('survivorCheat', 'true'); 
-        unlockedEquip = []; ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); });
+        cheatUnlocked = true; 
+        localStorage.setItem('survivorCheat', 'true'); 
+        unlockedEquip = []; 
+        ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); });
         localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip));
         alert("✔️ CODICE ACCETTATO!\nTutti i personaggi e gli equipaggiamenti sono sbloccati per sempre."); 
-        closeSettings(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+        closeSettings(); 
+        if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
     } 
-    else if (input === "crystall") {
+    else if (input === "crystall" || input === "crystal" || input === "cristalli") {
         totalCrystals += 1000;
         localStorage.setItem('survivorCrystals', totalCrystals);
         alert("💎 +1000 CRISTALLI!\nHai ricevuto una fornitura di cristalli.");
-        closeSettings(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+        closeSettings(); 
+        if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+        document.getElementById('menu-crystal-count').innerText = totalCrystals; // Aggiorna UI
     }
     else if (input === "reset") {
-        localStorage.removeItem('survivorMaxLevel');
-        localStorage.removeItem('survivorCheat');
-        localStorage.removeItem('survivorCrystals');
-        localStorage.removeItem('survivorUnlockedEquip');
-        localStorage.removeItem('survivorEquipped');
-        localStorage.removeItem('survivorPlayerName');
-        
-        maxLevelReached = 1; cheatUnlocked = false; totalCrystals = 0;
-        unlockedEquip = []; equippedItems = { elmo: null, corazza: null, amuleto: null };
-        savedName = ""; document.getElementById('player-name-input').value = "";
-        
-        alert("🔄 PROGRESSI RESETTATI!\nTutti i dati di gioco sono stati cancellati.");
-        closeSettings(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+        localStorage.clear();
+        alert("🔄 PROGRESSI RESETTATI!\nTutti i dati di gioco sono stati cancellati. Il gioco si riavvierà per applicare le modifiche.");
+        location.reload(); // Forza ricaricamento pulito della pagina
     }
     else { 
         alert("❌ Codice errato."); 
@@ -194,6 +189,7 @@ function update() {
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
     
+    // COLLISIONI MURI ARENA BOSS (Player)
     if (bossArena.active) {
         if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
         if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
@@ -292,7 +288,16 @@ function update() {
         if (hitRock) continue;
     }
 
-    elementalTrails.forEach(t => { t.life--; if (t.life % 10 === 0) { enemies.forEach(e => { if (!e.dead && Math.hypot(e.x - t.x, e.y - t.y) < t.radius + e.size) { if (t.type === 'ice') { e.frozenTimer = 180; e.speed = e.originalSpeed * 0.2; } else { e.burnTimer = 180; } } }); } });
+    elementalTrails.forEach(t => {
+        t.life--;
+        if (t.life % 10 === 0) { 
+            enemies.forEach(e => {
+                if (!e.dead && Math.hypot(e.x - t.x, e.y - t.y) < t.radius + e.size) {
+                    if (t.type === 'ice') { e.frozenTimer = 180; e.speed = e.originalSpeed * 0.2; } else { e.burnTimer = 180; }
+                }
+            });
+        }
+    });
     elementalTrails = elementalTrails.filter(t => t.life > 0);
 
     explosions.forEach(exp => {
@@ -491,6 +496,7 @@ function draw() {
     for(let x = -offsetX; x < viewW; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, viewH); ctx.stroke(); } 
     for(let y = -offsetY; y < viewH; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(viewW, y); ctx.stroke(); }
     
+    // --- DISEGNO ARENA BOSS ---
     if (bossArena.active) {
         ctx.strokeStyle = "rgba(255, 0, 0, 0.6)"; ctx.lineWidth = 10; ctx.setLineDash([20, 15]);
         ctx.beginPath(); ctx.arc(bossArena.x - camX, bossArena.y - camY, bossArena.radius, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
@@ -506,6 +512,7 @@ function draw() {
         else { ctx.fillStyle = `rgba(255, 80, 0, ${alpha * 0.5})`; ctx.beginPath(); ctx.arc(exp.x - camX, exp.y - camY, exp.radius, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = `rgba(255, 200, 0, ${alpha})`; ctx.lineWidth = 3; ctx.stroke(); }
     });
 
+    // DISEGNO CASSE
     chests.forEach(c => { 
         let chestWidth = c.size * 2.8; let chestHeight = c.size * 1.8; let drawX = c.x - camX - (chestWidth / 2); let drawY = c.y - camY - (chestHeight / 2); 
         if (c.isSpecial) { 
@@ -528,6 +535,7 @@ function draw() {
         else { ctx.fillStyle = g.isSuper ? '#ffa500' : '#00ffff'; ctx.beginPath(); ctx.arc(g.x - camX, g.y - camY, g.isSuper ? 8 : 4, 0, Math.PI*2); ctx.fill(); }
     });
 
+    // Palle di fuoco Boss vs Proiettili nemici base
     enemyBullets.forEach(b => { 
         if (b.isFireball) {
             ctx.fillStyle = '#ff4500'; ctx.shadowBlur = 15; ctx.shadowColor = 'red';
@@ -554,6 +562,7 @@ function draw() {
         ctx.fillStyle = currentFill; ctx.fillRect(bx - bodyW/2, by - bodyH/2, bodyW, bodyH); ctx.beginPath(); ctx.arc(bx, by - bodyH/2 - e.size*0.3, e.size * 0.9, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; 
         if(e.type === 'miniboss') { ctx.fillStyle = 'black'; ctx.fillRect(bx - 40, by - e.size*2.5, 80, 8); ctx.fillStyle = 'red'; ctx.fillRect(bx - 40, by - e.size*2.5, 80 * (Math.max(0, e.hp)/e.maxHp), 8); } 
 
+        // DISEGNO TELEGRAFIA BOSS AVANZATO
         if (e.type === 'miniboss' && e.advanced && e.state === 'telegraph_dash') {
             let tx = e.targetX - camX; let ty = e.targetY - camY;
             ctx.strokeStyle = "rgba(255, 0, 0, 0.8)"; ctx.lineWidth = 3;
@@ -594,6 +603,7 @@ function draw() {
 
     ctx.font = "bold 20px Arial"; ctx.fillStyle = "white"; ctx.shadowBlur = 5; ctx.shadowColor = "black"; ctx.fillText(activePlayerName, screenCenterX, screenCenterY - pBodyH/2 - player.size - 25); ctx.shadowBlur = 0;
 
+    // --- BUSSOLE ---
     let normalChests = chests.filter(c => !c.isSpecial && !c.isEpic && !c.isBossChest);
     if (normalChests.length > 0) { let closestChest = normalChests.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev); let dist = Math.hypot(closestChest.x - player.x, closestChest.y - player.y); if (dist > 200 && dist < 1500) { let angle = Math.atan2(closestChest.y - player.y, closestChest.x - player.x); ctx.save(); ctx.translate(screenCenterX, screenCenterY); ctx.rotate(angle); ctx.fillStyle = 'gold'; ctx.shadowColor = 'yellow'; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(80, 0); ctx.lineTo(60, -15); ctx.lineTo(60, 15); ctx.fill(); ctx.restore(); } }
     
@@ -603,14 +613,26 @@ function draw() {
     if (bossTarget || droppedBossChest) {
         let targetX = bossTarget ? bossTarget.x : droppedBossChest.x; let targetY = bossTarget ? bossTarget.y : droppedBossChest.y;
         let dist = Math.hypot(targetX - player.x, targetY - player.y);
+        
         if (dist > 150) { 
             let angle = Math.atan2(targetY - player.y, targetX - player.x);
             ctx.save(); ctx.translate(screenCenterX, screenCenterY); 
             let cx = Math.cos(angle) * 110; let cy = Math.sin(angle) * 110; 
-            ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle); ctx.fillStyle = droppedBossChest ? '#ff00ff' : '#ff0000'; ctx.shadowColor = droppedBossChest ? '#ff00ff' : 'red'; ctx.shadowBlur = 20; ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(0, -15); ctx.lineTo(0, 15); ctx.fill(); ctx.restore(); 
-            ctx.font = "28px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.shadowColor = droppedBossChest ? '#ff00ff' : "red"; ctx.shadowBlur = 15; ctx.fillText(droppedBossChest ? "💎" : "💀", cx - Math.cos(angle)*25, cy - Math.sin(angle)*25); ctx.restore(); 
+            
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle); 
+            ctx.fillStyle = droppedBossChest ? '#ff00ff' : '#ff0000'; 
+            ctx.shadowColor = droppedBossChest ? '#ff00ff' : 'red'; 
+            ctx.shadowBlur = 20; 
+            ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(0, -15); ctx.lineTo(0, 15); ctx.fill(); 
+            ctx.restore(); 
+            
+            ctx.font = "28px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; 
+            ctx.shadowColor = droppedBossChest ? '#ff00ff' : "red"; ctx.shadowBlur = 15; 
+            ctx.fillText(droppedBossChest ? "💎" : "💀", cx - Math.cos(angle)*25, cy - Math.sin(angle)*25); 
+            ctx.restore(); 
         } 
     }
+    
     ctx.restore(); 
 }
 
