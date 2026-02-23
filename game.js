@@ -15,7 +15,7 @@ let selectedCharId = 0;
 let savedName = localStorage.getItem('survivorPlayerName') || ""; let activePlayerName = "Eroe";
 
 let chestImg = new Image(); chestImg.src = 'chest.png';
-let chestEpicImg = new Image(); chestEpicImg.src = 'chestepic.png'; // Immagine Cassa Epica
+let chestEpicImg = new Image(); chestEpicImg.src = 'chestepic.png';
 
 let isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 let controlMode = isTouchDevice ? 'mobile' : 'pc';
@@ -25,6 +25,9 @@ const joyZone = document.getElementById('joystick-zone'); const joyStick = docum
 let keys = {}; 
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+// --- SISTEMA ARENA BOSS ---
+let bossArena = { active: false, x: 0, y: 0, radius: 800 };
 
 function distToSegment(px, py, x1, y1, x2, y2) { let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); if (l2 === 0) return Math.hypot(px - x1, py - y1); let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))); }
 
@@ -51,21 +54,9 @@ const WEAPONS_DB = {
 const CHARACTERS = [ { id: 0, name: "Recluta", desc: "Corpo Quadrato", reqLevel: 1, weapons: ['pistola', 'fucile', 'bastone'] }, { id: 1, name: "Gelataio", desc: "Corpo a Cono", reqLevel: 10, weapons: ['pistola', 'laser', 'granata'] }, { id: 2, name: "Punta", desc: "Corpo Piramidale", reqLevel: 15, weapons: ['pistola', 'razzo', 'freezer'] } ];
 
 const EQUIP_DB = {
-    elmo: [
-        { id: 'elmo_1', name: 'Elmo Comune', desc: '15% Schivata Proiettili', price: 100, value: 0.15, icon: '🪖' },
-        { id: 'elmo_2', name: 'Elmo Raro', desc: '30% Schivata Proiettili', price: 300, value: 0.30, icon: '🪖' },
-        { id: 'elmo_3', name: 'Elmo Epico', desc: '50% Schivata Proiettili', price: 600, value: 0.50, icon: '👑' }
-    ],
-    corazza: [
-        { id: 'cor_1', name: 'Corazza Comune', desc: '15% Schivata Mischia', price: 100, value: 0.15, icon: '👕' },
-        { id: 'cor_2', name: 'Corazza Rara', desc: '30% Schivata Mischia', price: 300, value: 0.30, icon: '🦺' },
-        { id: 'cor_3', name: 'Corazza Epica', desc: '50% Schivata Mischia', price: 600, value: 0.50, icon: '🛡️' }
-    ],
-    amuleto: [
-        { id: 'amu_ice', name: 'Amuleto Ghiaccio', desc: 'Scia congelante (3s)', price: 1000, icon: '❄️' },
-        { id: 'amu_fire', name: 'Amuleto Fuoco', desc: 'Scia incendiaria (3s)', price: 1000, icon: '🔥' },
-        { id: 'amu_revive', name: 'Amuleto Fenice', desc: 'Rinasci 1 volta (50% HP)', price: 2000, icon: '❤️‍🔥' }
-    ]
+    elmo: [ { id: 'elmo_1', name: 'Elmo Comune', desc: '15% Schivata Proiettili', price: 100, value: 0.15, icon: '🪖' }, { id: 'elmo_2', name: 'Elmo Raro', desc: '30% Schivata Proiettili', price: 300, value: 0.30, icon: '🪖' }, { id: 'elmo_3', name: 'Elmo Epico', desc: '50% Schivata Proiettili', price: 600, value: 0.50, icon: '👑' } ],
+    corazza: [ { id: 'cor_1', name: 'Corazza Comune', desc: '15% Schivata Mischia', price: 100, value: 0.15, icon: '👕' }, { id: 'cor_2', name: 'Corazza Rara', desc: '30% Schivata Mischia', price: 300, value: 0.30, icon: '🦺' }, { id: 'cor_3', name: 'Corazza Epica', desc: '50% Schivata Mischia', price: 600, value: 0.50, icon: '🛡️' } ],
+    amuleto: [ { id: 'amu_ice', name: 'Amuleto Ghiaccio', desc: 'Scia congelante (3s)', price: 1000, icon: '❄️' }, { id: 'amu_fire', name: 'Amuleto Fuoco', desc: 'Scia incendiaria (3s)', price: 1000, icon: '🔥' }, { id: 'amu_revive', name: 'Amuleto Fenice', desc: 'Rinasci 1 volta (50% HP)', price: 2000, icon: '❤️‍🔥' } ]
 };
 
 let player = {};
@@ -79,14 +70,11 @@ function checkCheatCode() {
     let input = document.getElementById('cheat-input').value;
     if (input === "160105") { 
         cheatUnlocked = true; localStorage.setItem('survivorCheat', 'true'); 
-        unlockedEquip = [];
-        ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); });
+        unlockedEquip = []; ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); });
         localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip));
-        alert("✔️ CODICE ACCETTATO!\nTutti i personaggi e gli equipaggiamenti sbloccati per sempre."); 
-        closeSettings();
-        if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
-    } else { alert("❌ Codice errato."); } 
-    document.getElementById('cheat-input').value = "";
+        alert("✔️ CODICE ACCETTATO!\nTutti i personaggi e gli equipaggiamenti sono sbloccati per sempre."); 
+        closeSettings(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+    } else { alert("❌ Codice errato."); } document.getElementById('cheat-input').value = "";
 }
 
 function showEquipmentMenu() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('equipment-select').style.display = 'flex'; updateEquipMenuUI(); }
@@ -99,10 +87,8 @@ function updateEquipMenuUI() {
         EQUIP_DB[category].forEach(item => {
             let isUnlocked = unlockedEquip.includes(item.id); let isEquipped = equippedItems[category] === item.id;
             let card = document.createElement('div'); card.className = `char-card ${isUnlocked ? 'unlocked' : ''} ${isEquipped ? 'equipped' : ''}`;
-            let btnHtml = '';
-            if (isEquipped) { btnHtml = `<button class="equip-btn equipped" disabled>Equipaggiato</button>`; } else if (isUnlocked) { btnHtml = `<button class="equip-btn equip" onclick="equipItem('${category}', '${item.id}')">Equipaggia</button>`; } else { let canAfford = totalCrystals >= item.price; btnHtml = `<button class="equip-btn buy" ${canAfford ? '' : 'disabled'} onclick="buyEquip('${item.id}', ${item.price})">Compra 💎 ${item.price}</button>`; }
-            card.innerHTML = `<div style="font-size:40px; margin-bottom:10px;">${item.icon}</div><h3>${item.name}</h3><p style="color:#aaa; font-size:12px;">${item.desc}</p>${btnHtml}`;
-            row.appendChild(card);
+            let btnHtml = ''; if (isEquipped) { btnHtml = `<button class="equip-btn equipped" disabled>Equipaggiato</button>`; } else if (isUnlocked) { btnHtml = `<button class="equip-btn equip" onclick="equipItem('${category}', '${item.id}')">Equipaggia</button>`; } else { let canAfford = totalCrystals >= item.price; btnHtml = `<button class="equip-btn buy" ${canAfford ? '' : 'disabled'} onclick="buyEquip('${item.id}', ${item.price})">Compra 💎 ${item.price}</button>`; }
+            card.innerHTML = `<div style="font-size:40px; margin-bottom:10px;">${item.icon}</div><h3>${item.name}</h3><p style="color:#aaa; font-size:12px;">${item.desc}</p>${btnHtml}`; row.appendChild(card);
         }); container.appendChild(row);
     });
 }
@@ -137,15 +123,14 @@ function showCharacterSelect() {
 function startGame() {
     gameState = "PLAYING"; savePlayerName(); activePlayerName = savedName !== "" ? savedName : "Eroe"; sessionCrystals = 0; document.getElementById('crystal-count').innerText = 0;
     
-    let amuletIcon = "";
-    if (equippedItems.amuleto) { let item = EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto); if (item) amuletIcon = item.icon; }
+    let amuletIcon = ""; if (equippedItems.amuleto) { let item = EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto); if (item) amuletIcon = item.icon; }
     document.getElementById('amulet-icon-ui').innerText = amuletIcon; document.getElementById('amulet-icon-ui').style.opacity = '1';
-
     document.getElementById('main-menu').style.display = 'none'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'block'; canvas.style.display = 'block';
     document.getElementById('joystick-zone').style.display = (controlMode === 'mobile') ? 'flex' : 'none';
     
     player = { x: 0, y: 0, size: 20, speed: 4, hp: 100, maxHp: 100, pickupRange: 80, weapons: [], shield: 0, maxShield: 0, lastHitTimer: 0, iFrames: 0, hasOrbs: false, orbAngle: 0, orbTrail: [], miniMes: [], lastBossLevel: 0, charId: selectedCharId, hasRevived: false };
     enemies = []; bullets = []; beams = []; explosions = []; elementalTrails = []; enemyBullets = []; gems = []; rocks = []; chests = []; xp = 0; level = 1; xpNeeded = 15; frameCount = 0; keys = {}; paused = false; joyX = 0; joyY = 0;
+    bossArena = { active: false, x: 0, y: 0, radius: 800 };
     for(let i = 0; i < 15; i++) { let valid = false; let attempts = 0; let rx, ry, rSize; while(!valid && attempts < 10) { let angle = Math.random() * Math.PI * 2; let dist = 300 + Math.random() * 1500; rx = Math.cos(angle) * dist; ry = Math.sin(angle) * dist; rSize = 25 + Math.random() * 20; valid = isPositionFree(rx, ry, rSize); attempts++; } if (valid) rocks.push({ x: rx, y: ry, size: rSize, hp: 30 }); }
     giveWeapon(WEAPONS_DB.pistola); updateBarsUI(); document.getElementById('lvl').innerText = level; document.getElementById('shield-ui').style.display = 'none'; requestAnimationFrame(gameLoop);
 }
@@ -180,6 +165,13 @@ function update() {
     frameCount++; let dx = 0; let dy = 0;
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
+    
+    // COLLISIONI MURI ARENA BOSS (Player)
+    if (bossArena.active) {
+        if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
+        if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
+    }
+    
     for (let r of rocks) { if (Math.hypot((player.x + moveX) - r.x, player.y - r.y) < player.size + r.size) canMoveX = false; if (Math.hypot(player.x - r.x, (player.y + moveY) - r.y) < player.size + r.size) canMoveY = false; }
     if (canMoveX) player.x += moveX; if (canMoveY) player.y += moveY;
 
@@ -239,13 +231,12 @@ function update() {
     for (let i = bullets.length - 1; i >= 0; i--) { 
         let b = bullets[i]; let oldX = b.x; let oldY = b.y; b.x += b.vx; b.y += b.vy; 
         
-        // MODIFICATA SCIAL AMULETO: Più piccola (radius 10)
-        if (hasTrailAmulet && frameCount % 3 === 0) { elementalTrails.push({ x: b.x, y: b.y, type: trailType, radius: 10, life: 60, maxLife: 60 }); }
+        if (hasTrailAmulet && frameCount % 3 === 0) { elementalTrails.push({ x: b.x, y: b.y, type: trailType, radius: 12, life: 60, maxLife: 60 }); }
 
         let outOfRange = Math.hypot(b.x - b.startX, b.y - b.startY) > b.range;
         if (outOfRange) { 
             if (b.weaponId === 'granata') explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20, type: 'fire'});
-            else if (b.weaponId === 'freezer') explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: b.damage, life: 180, maxLife: 180, type: 'ice'});
+            else if (b.weaponId === 'freezer') explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: 0, life: 180, maxLife: 180, type: 'ice'});
             bullets.splice(i, 1); continue; 
         } 
         let hitRock = false;
@@ -253,7 +244,7 @@ function update() {
             let r = rocks[ri]; 
             if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size + b.size/2 + 5) { 
                 if (b.weaponId === 'granata') { explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20, type: 'fire'}); } 
-                else if (b.weaponId === 'freezer') { explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: b.damage, life: 180, maxLife: 180, type: 'ice'}); } 
+                else if (b.weaponId === 'freezer') { explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: 0, life: 180, maxLife: 180, type: 'ice'}); } 
                 else { r.hp -= b.damage; if (r.hp <= 0 && !r.dead) { r.dead=true; gems.push({ x: r.x, y: r.y, isSuper: true }); } }
                 bullets.splice(i, 1); hitRock = true; break; 
             } 
@@ -273,13 +264,11 @@ function update() {
     });
     elementalTrails = elementalTrails.filter(t => t.life > 0);
 
-    // GESTIONE ESPLOSIONI E AREE DI GHIACCIO
     explosions.forEach(exp => {
         if (exp.type === 'ice') {
             if (frameCount % 10 === 0 || exp.life === exp.maxLife) {
                 enemies.forEach(e => {
                     if (!e.dead && Math.hypot(e.x - exp.x, e.y - exp.y) < exp.radius + e.size) {
-                        if (exp.life === exp.maxLife && exp.damage > 0) { e.hp -= exp.damage; e.hitTimer = 5; if (e.hp <= 0 && !e.dead) { e.dead = true; handleEnemyDeath(e, -1); return; } }
                         e.frozenTimer = 180; e.speed = e.originalSpeed * 0.3;
                     }
                 });
@@ -312,16 +301,14 @@ function update() {
         } 
     }
     
-    // Generazione Casse Normali
     if (Math.random() < 0.0008 && chests.length < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false, isEpic: false }); }
     
-    // Generazione Cassa Epica e Sassi (Molto Rara)
-    if (Math.random() < 0.0003) {
+    // GENERAZIONE CASSA EPICA
+    if (Math.random() < 0.0002) {
         let angle = Math.random() * Math.PI * 2; let dist = 800 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; 
-        if(isPositionFree(cx, cy, 60)) {
-            chests.push({ x: cx, y: cy, size: 30, isEpic: true, isSpecial: false });
-            for(let i=0; i<8; i++) { let ra = i * (Math.PI / 4); rocks.push({ x: cx + Math.cos(ra)*55, y: cy + Math.sin(ra)*55, size: 25, hp: 200, dead: false }); }
-            showItemFeedback("✨ CASSA EPICA!", "#ff00ff");
+        if(isPositionFree(cx, cy, 150)) {
+            chests.push({ x: cx, y: cy, size: 50, isEpic: true, isSpecial: false }); // Cassa più grande
+            for(let i=0; i<8; i++) { let ra = i * (Math.PI / 4); rocks.push({ x: cx + Math.cos(ra)*120, y: cy + Math.sin(ra)*120, size: 45, hp: 400, dead: false }); } // Rocce enormi
         }
     }
 
@@ -342,7 +329,10 @@ function update() {
     for (let i = rocks.length - 1; i >= 0; i--) { if(rocks[i].dead) { rocks.splice(i,1); } else if (Math.hypot(player.x - rocks[i].x, player.y - rocks[i].y) > 2000) rocks.splice(i, 1); }
     while(rocks.length < 15) { let valid = false; let attempts = 0; let rx, ry, rSize; while(!valid && attempts < 10) { let angle = Math.random() * Math.PI * 2; rx = player.x + Math.cos(angle) * (1000 + Math.random() * 500); ry = player.y + Math.sin(angle) * (1000 + Math.random() * 500); rSize = 25 + Math.random() * 20; valid = isPositionFree(rx, ry, rSize); attempts++; } if (valid) rocks.push({ x: rx, y: ry, size: rSize, hp: 30 }); }
     
+    // --- GESTIONE SPAWN E ARENA ---
     let spawnDelay = Math.max(30, 120 - (level * 10)); 
+    if (bossArena.active) spawnDelay *= 5; // Meno nemici normali se c'è il boss!
+
     if (frameCount % spawnDelay === 0) { 
         let numToSpawn = 1 + Math.floor(level / 3); 
         for(let i = 0; i < numToSpawn; i++) { 
@@ -363,13 +353,60 @@ function update() {
         if (e.dead) { enemies.splice(ei, 1); continue; } 
         if (Math.hypot(player.x - e.x, player.y - e.y) > 2500) { enemies.splice(ei, 1); continue; } 
         
+        // Evita che i nemici normali entrino nell'arena del boss
+        if (bossArena.active && e.type !== 'miniboss') {
+            if (Math.hypot(e.x - bossArena.x, e.y - bossArena.y) < bossArena.radius + e.size) {
+                let pushA = Math.atan2(e.y - bossArena.y, e.x - bossArena.x);
+                e.x = bossArena.x + Math.cos(pushA) * (bossArena.radius + e.size);
+                e.y = bossArena.y + Math.sin(pushA) * (bossArena.radius + e.size);
+            }
+        }
+
         if (e.hitTimer > 0) e.hitTimer--;
         if (e.frozenTimer > 0) { e.frozenTimer--; if (e.frozenTimer <= 0) e.speed = e.originalSpeed; }
         if (e.burnTimer > 0) { e.burnTimer--; if (e.burnTimer % 30 === 0) { e.hp -= 10; e.hitTimer = 5; if(e.hp <= 0 && !e.dead) { e.dead=true; handleEnemyDeath(e, ei); continue; } } }
 
-        let dx = player.x - e.x; let dy = player.y - e.y; let angle = Math.atan2(dy, dx); e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed; 
-        if (e.type === 'shooter') { e.fireTimer++; if (e.fireTimer >= 100) { enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*5, vy: Math.sin(angle)*5, damage: 10 }); e.fireTimer = 0; } } 
-        
+        let angle = Math.atan2(player.y - e.y, player.x - e.x); 
+
+        // --- AI BOSS AVANZATA (Lv 10+) ---
+        if (e.type === 'miniboss' && e.advanced) {
+            e.stateTimer++;
+            if (e.state === 'idle') {
+                e.x += Math.cos(angle) * (e.speed * 0.6); e.y += Math.sin(angle) * (e.speed * 0.6);
+                let attackDelay = Math.max(60, 150 - (e.phaseMultiplier * 20));
+                if (e.stateTimer > attackDelay) { e.stateTimer = 0; e.state = Math.random() < 0.5 ? 'telegraph_dash' : 'telegraph_fire'; }
+            } 
+            else if (e.state === 'telegraph_dash') {
+                if (e.stateTimer === 1) { e.targetX = player.x; e.targetY = player.y; } // Fissa bersaglio
+                let telegraphTime = Math.max(30, 70 - (e.phaseMultiplier * 10));
+                if (e.stateTimer > telegraphTime) { e.stateTimer = 0; e.state = 'dashing'; }
+            }
+            else if (e.state === 'dashing') {
+                let dashSpeed = 18 + (e.phaseMultiplier * 3);
+                let dAngle = Math.atan2(e.targetY - e.y, e.targetX - e.x);
+                e.x += Math.cos(dAngle) * dashSpeed; e.y += Math.sin(dAngle) * dashSpeed;
+                if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { damagePlayer(1.5); e.state = 'idle'; e.stateTimer = 0; }
+                if (Math.hypot(e.targetX - e.x, e.targetY - e.y) < dashSpeed) { e.state = 'idle'; e.stateTimer = 0; }
+            }
+            else if (e.state === 'telegraph_fire') {
+                if (e.stateTimer > 40) { e.stateTimer = 0; e.state = 'shooting'; e.shotsFired = 0; }
+            }
+            else if (e.state === 'shooting') {
+                let totalShots = 3 + e.phaseMultiplier;
+                if (e.stateTimer % 15 === 0) {
+                    let shootA = Math.atan2(player.y - e.y, player.x - e.x);
+                    enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(shootA)*8, vy: Math.sin(shootA)*8, damage: 20, isFireball: true });
+                    e.shotsFired++;
+                    if (e.shotsFired >= totalShots) { e.state = 'idle'; e.stateTimer = 0; }
+                }
+            }
+        } 
+        else {
+            // Movimento normale
+            e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed; 
+            if (e.type === 'shooter') { e.fireTimer++; if (e.fireTimer >= 100) { enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*5, vy: Math.sin(angle)*5, damage: 10 }); e.fireTimer = 0; } } 
+        }
+
         if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { 
             if (player.iFrames <= 0) { if (Math.random() < corazzaDodge) { showItemFeedback("SCHIVATA!", "#00ff00"); player.iFrames = 20; } else { damagePlayer(1); player.iFrames = 10; } }
         } 
@@ -378,7 +415,7 @@ function update() {
             let b = bullets[bi]; 
             if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size + 35) { 
                 if (b.weaponId === 'granata') { explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20, type: 'fire'}); } 
-                else if (b.weaponId === 'freezer') { explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: b.damage, life: 180, maxLife: 180, type: 'ice'}); }
+                else if (b.weaponId === 'freezer') { explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: 0, life: 180, maxLife: 180, type: 'ice'}); } 
                 else { e.hp -= b.damage; e.hitTimer = 5; }
                 bullets.splice(bi, 1); 
             } 
@@ -399,7 +436,12 @@ function update() {
 }
 
 function handleEnemyDeath(e, ei) {
-    if (e.type === 'miniboss') { chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true, isEpic: false }); showItemFeedback("🏆 CASSA SUPREMA!", "gold"); for(let c=0; c<15; c++) gems.push({ x: e.x + Math.random()*80-40, y: e.y + Math.random()*80-40, isCrystal: true }); } 
+    if (e.type === 'miniboss') { 
+        chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true, isEpic: false }); 
+        showItemFeedback("🏆 CASSA SUPREMA!", "gold"); 
+        for(let c=0; c<15; c++) gems.push({ x: e.x + Math.random()*80-40, y: e.y + Math.random()*80-40, isCrystal: true }); 
+        bossArena.active = false; // Disattiva arena alla morte
+    } 
     else { if (Math.random() < 0.02) { gems.push({ x: e.x, y: e.y, isCrystal: true }); } else { gems.push({ x: e.x, y: e.y, isSuper: false }); } } 
     if (ei > -1) enemies.splice(ei, 1);
 }
@@ -427,25 +469,30 @@ function draw() {
     for(let x = -offsetX; x < viewW; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, viewH); ctx.stroke(); } 
     for(let y = -offsetY; y < viewH; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(viewW, y); ctx.stroke(); }
     
+    // --- DISEGNO ARENA BOSS ---
+    if (bossArena.active) {
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.6)"; ctx.lineWidth = 10; ctx.setLineDash([20, 15]);
+        ctx.beginPath(); ctx.arc(bossArena.x - camX, bossArena.y - camY, bossArena.radius, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(100, 0, 0, 0.1)"; ctx.fill();
+    }
+
     elementalTrails.forEach(t => { let alpha = t.life / t.maxLife; ctx.fillStyle = t.type === 'ice' ? `rgba(0, 255, 255, ${alpha * 0.4})` : `rgba(255, 100, 0, ${alpha * 0.4})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, t.radius, 0, Math.PI*2); ctx.fill(); });
     ctx.fillStyle = '#666'; ctx.strokeStyle = '#444'; ctx.lineWidth = 4; rocks.forEach(r => { ctx.beginPath(); ctx.arc(r.x - camX, r.y - camY, r.size, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
     
     explosions.forEach(exp => { 
         let alpha = exp.life / exp.maxLife; 
-        if(exp.type === 'ice') {
-            ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.4})`; ctx.beginPath(); ctx.arc(exp.x - camX, exp.y - camY, exp.radius, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = `rgba(100, 255, 255, ${alpha})`; ctx.lineWidth = 2; ctx.stroke();
-        } else {
-            ctx.fillStyle = `rgba(255, 80, 0, ${alpha * 0.5})`; ctx.beginPath(); ctx.arc(exp.x - camX, exp.y - camY, exp.radius, 0, Math.PI*2); ctx.fill(); 
-            ctx.strokeStyle = `rgba(255, 200, 0, ${alpha})`; ctx.lineWidth = 3; ctx.stroke(); 
-        }
+        if(exp.type === 'ice') { ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.4})`; ctx.beginPath(); ctx.arc(exp.x - camX, exp.y - camY, exp.radius, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = `rgba(100, 255, 255, ${alpha})`; ctx.lineWidth = 2; ctx.stroke(); } 
+        else { ctx.fillStyle = `rgba(255, 80, 0, ${alpha * 0.5})`; ctx.beginPath(); ctx.arc(exp.x - camX, exp.y - camY, exp.radius, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = `rgba(255, 200, 0, ${alpha})`; ctx.lineWidth = 3; ctx.stroke(); }
     });
 
+    // DISEGNO CASSE
     chests.forEach(c => { 
         let chestWidth = c.size * 2.8; let chestHeight = c.size * 1.8; let drawX = c.x - camX - (chestWidth / 2); let drawY = c.y - camY - (chestHeight / 2); 
         if (c.isSpecial) { 
-            ctx.shadowBlur = 30; ctx.shadowColor = 'red'; ctx.fillStyle = '#aa0000'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); 
-            ctx.fillStyle = 'gold'; ctx.fillRect(drawX + chestWidth/2 - 8, drawY + chestHeight/2 - 10, 16, 20); ctx.shadowBlur = 0; 
+            // Cassa Boss Personalizzata (Rossa e Oro)
+            ctx.shadowBlur = 30; ctx.shadowColor = 'red'; ctx.fillStyle = '#800000'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); 
+            ctx.fillStyle = '#ffaa00'; ctx.fillRect(drawX - 5, drawY - 5, chestWidth + 10, 10); ctx.fillRect(drawX - 5, drawY + chestHeight - 5, chestWidth + 10, 10);
+            ctx.fillStyle = 'gold'; ctx.fillRect(drawX + chestWidth/2 - 15, drawY + chestHeight/2 - 15, 30, 30); ctx.shadowBlur = 0; 
         } else if (c.isEpic) {
             if(chestEpicImg.complete && chestEpicImg.naturalWidth > 0) { ctx.drawImage(chestEpicImg, drawX, drawY, chestWidth, chestHeight); }
             else { ctx.fillStyle = '#bf00ff'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); ctx.fillStyle = 'gold'; ctx.fillRect(drawX + chestWidth/2 - 4, drawY + chestHeight/2 - 6, 8, 12); }
@@ -461,7 +508,18 @@ function draw() {
         else { ctx.fillStyle = g.isSuper ? '#ffa500' : '#00ffff'; ctx.beginPath(); ctx.arc(g.x - camX, g.y - camY, g.isSuper ? 8 : 4, 0, Math.PI*2); ctx.fill(); }
     });
 
-    ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff'; enemyBullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 6, 0, Math.PI*2); ctx.fill(); }); ctx.shadowBlur = 0;
+    // Palle di fuoco Boss vs Proiettili nemici base
+    enemyBullets.forEach(b => { 
+        if (b.isFireball) {
+            ctx.fillStyle = '#ff4500'; ctx.shadowBlur = 15; ctx.shadowColor = 'red';
+            ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 12, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = 'yellow'; ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 6, 0, Math.PI*2); ctx.fill(); 
+        } else {
+            ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff'; 
+            ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 6, 0, Math.PI*2); ctx.fill(); 
+        }
+    }); 
+    ctx.shadowBlur = 0;
 
     bullets.forEach(b => { drawProjectile(b, camX, camY); });
     beams.forEach(b => { ctx.save(); let alpha = b.life / b.maxLife; ctx.globalAlpha = alpha; ctx.strokeStyle = b.color; ctx.lineWidth = 15 * alpha; ctx.lineCap = "round"; ctx.shadowBlur = 20; ctx.shadowColor = b.color; ctx.beginPath(); ctx.moveTo(b.x - camX, b.y - camY); ctx.lineTo(b.x - camX + Math.cos(b.angle)*b.range, b.y - camY + Math.sin(b.angle)*b.range); ctx.stroke(); ctx.strokeStyle = "white"; ctx.lineWidth = 5 * alpha; ctx.stroke(); ctx.restore(); });
@@ -476,6 +534,16 @@ function draw() {
         if(e.type === 'shooter') { ctx.fillStyle = '#555'; let handY = by - bodyH/2 - armOffset + armH - 4; ctx.fillRect(bx + bodyW/2 + armW/2, handY, e.size*1.5, 5); ctx.fillRect(bx + bodyW/2 + armW/2, handY, 5, 10); } 
         ctx.fillStyle = currentFill; ctx.fillRect(bx - bodyW/2, by - bodyH/2, bodyW, bodyH); ctx.beginPath(); ctx.arc(bx, by - bodyH/2 - e.size*0.3, e.size * 0.9, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; 
         if(e.type === 'miniboss') { ctx.fillStyle = 'black'; ctx.fillRect(bx - 40, by - e.size*2.5, 80, 8); ctx.fillStyle = 'red'; ctx.fillRect(bx - 40, by - e.size*2.5, 80 * (Math.max(0, e.hp)/e.maxHp), 8); } 
+
+        // DISEGNO TELEGRAFIA BOSS AVANZATO
+        if (e.type === 'miniboss' && e.advanced && e.state === 'telegraph_dash') {
+            let tx = e.targetX - camX; let ty = e.targetY - camY;
+            ctx.strokeStyle = "rgba(255, 0, 0, 0.8)"; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(tx, ty, e.size, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(tx - 20, ty); ctx.lineTo(tx + 20, ty); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(tx, ty - 20); ctx.lineTo(tx, ty + 20); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+        }
     });
 
     let screenCenterX = viewW / 2; let screenCenterY = viewH / 2;
@@ -519,7 +587,7 @@ function draw() {
         if (dist > 150) { 
             let angle = Math.atan2(closestBossChest.y - player.y, closestBossChest.x - player.x);
             ctx.save(); ctx.translate(screenCenterX, screenCenterY); ctx.rotate(angle);
-            ctx.fillStyle = '#ff00ff'; ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 20; // Bussola Fucsia Boss!
+            ctx.fillStyle = '#ff00ff'; ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 20; 
             ctx.beginPath(); ctx.moveTo(100, 0); ctx.lineTo(75, -20); ctx.lineTo(75, 20); ctx.fill();
             ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("💀", 60, 0);
             ctx.restore();
@@ -541,29 +609,23 @@ function buildUpgradePool() {
     return pool;
 }
 
-function levelUp() { paused = true; xp = xp - xpNeeded; xpNeeded = Math.floor(xpNeeded * 1.5); level++; document.getElementById('lvl').innerText = level; document.getElementById('xp-bar').style.width = (Math.max(0, xp) / xpNeeded * 100) + '%'; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Livello Superato!"; document.getElementById('levelup-title').style.color = "#00ffff"; document.getElementById('levelup-modal').style.display = 'block'; if (level % 5 === 0 && player.lastBossLevel !== level) { player.lastBossLevel = level; let bossHp = 2000 * (level / 5); let bossSpeed = 0.8 + (level * 0.02); enemies.push({ x: player.x, y: player.y - 600, hp: bossHp, maxHp: bossHp, speed: bossSpeed, originalSpeed: bossSpeed, size: 35, type: 'miniboss', color: 'gold', fireTimer: 0, hitTimer: 0, frozenTimer: 0, burnTimer: 0, dead: false }); setTimeout(() => { showItemFeedback("⚠️ TITANO IN ARRIVO! ⚠️", "#ff0000"); }, 500); } }
-function freeUpgrade() { paused = true; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Cassa: Scelta Gratuita!"; document.getElementById('levelup-title').style.color = "#ffff00"; document.getElementById('levelup-modal').style.display = 'block'; }
-function showBossRelicModal() { paused = true; let pool = [ { name: `<span class="upgrade-title">🌀 Palle Rotanti</span><span class="upgrade-desc">2 sfere lasciano una scia dannosa</span>`, apply: () => { player.hasOrbs = true; closeBossModal(); } }, { name: `<span class="upgrade-title">🛡️ Scudo Rigenerativo</span><span class="upgrade-desc">Assorbe danni e si ricarica da solo</span>`, apply: () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeBossModal(); } } ]; if (player.miniMes.length < 3) { pool.push({ name: `<span class="upgrade-title">🤖 Mini Me</span><span class="upgrade-desc">Un robottino alleato che spara per te</span>`, apply: () => { player.miniMes.push({x: player.x, y: player.y, hp: 100, maxHp: 100, fireTimer: 0}); closeBossModal(); } }); } else { pool.push({ name: `<span class="upgrade-title">❤️ Titanico</span><span class="upgrade-desc">Aumenta e cura tutti gli HP</span>`, apply: () => { player.maxHp += 100; player.hp = player.maxHp; updateBarsUI(); closeBossModal(); } }); } for(let i=0; i<3; i++) { let btn = document.getElementById('boss-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('boss-modal').style.display = 'block'; }
-function closeBossModal() { document.getElementById('boss-modal').style.display = 'none'; paused = false; }
-
-function showEpicChestModal() {
-    paused = true;
-    let randomRelic = ["🤖 Mini Me", "🌀 Palle Rotanti", "🛡️ Scudo Rigenerativo"][Math.floor(Math.random()*3)];
-    let relicAction;
-    if (randomRelic === "🤖 Mini Me") relicAction = () => { player.miniMes.push({x: player.x, y: player.y, hp: 100, maxHp: 100, fireTimer: 0}); closeEpicModal(); };
-    if (randomRelic === "🌀 Palle Rotanti") relicAction = () => { player.hasOrbs = true; closeEpicModal(); };
-    if (randomRelic === "🛡️ Scudo Rigenerativo") relicAction = () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeEpicModal(); };
-
-    let pool = [
-        { name: `<span class="upgrade-title" style="color:#bf00ff;">💎 20 Cristalli</span>`, apply: () => { totalCrystals+=20; sessionCrystals+=20; localStorage.setItem('survivorCrystals', totalCrystals); document.getElementById('crystal-count').innerText = sessionCrystals; closeEpicModal(); } },
-        { name: `<span class="upgrade-title" style="color:#00ffff;">🎁 ${randomRelic}</span>`, apply: relicAction },
-        { name: `<span class="upgrade-title" style="color:#00ff00;">❤️ Cura + ESP (2 Livelli)</span>`, apply: () => { player.hp = player.maxHp; updateBarsUI(); xp += xpNeeded + Math.floor(xpNeeded * 1.5); closeEpicModal(); } }
-    ];
-    for(let i=0; i<3; i++) { let btn = document.getElementById('epic-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; }
-    document.getElementById('epic-modal').style.display = 'block';
+function levelUp() { paused = true; xp = xp - xpNeeded; xpNeeded = Math.floor(xpNeeded * 1.5); level++; document.getElementById('lvl').innerText = level; document.getElementById('xp-bar').style.width = (Math.max(0, xp) / xpNeeded * 100) + '%'; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Livello Superato!"; document.getElementById('levelup-title').style.color = "#00ffff"; document.getElementById('levelup-modal').style.display = 'block'; 
+    if (level % 5 === 0 && player.lastBossLevel !== level) { 
+        player.lastBossLevel = level; let bossHp = 2000 * (level / 5); let bossSpeed = 0.8 + (level * 0.02); 
+        let isAdvanced = level >= 10;
+        enemies.push({ x: player.x, y: player.y - 600, hp: bossHp, maxHp: bossHp, speed: bossSpeed, originalSpeed: bossSpeed, size: isAdvanced ? 45 : 35, type: 'miniboss', color: 'gold', fireTimer: 0, hitTimer: 0, frozenTimer: 0, burnTimer: 0, dead: false, advanced: isAdvanced, state: 'idle', stateTimer: 0, targetX: 0, targetY: 0, phaseMultiplier: Math.floor(level/5) - 1 }); 
+        
+        if (isAdvanced) { bossArena = { active: true, x: player.x, y: player.y, radius: 900 }; setTimeout(() => { showItemFeedback("⚠️ ARENA DEL TITANO! ⚠️", "#ff0000"); }, 500); } 
+        else { setTimeout(() => { showItemFeedback("⚠️ TITANO IN ARRIVO! ⚠️", "#ff0000"); }, 500); }
+    } 
 }
+function freeUpgrade() { paused = true; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Cassa: Scelta Gratuita!"; document.getElementById('levelup-title').style.color = "#ffff00"; document.getElementById('levelup-modal').style.display = 'block'; }
+
+function showEpicChestModal() { paused = true; let randomRelic = ["🤖 Mini Me", "🌀 Palle Rotanti", "🛡️ Scudo Rigenerativo"][Math.floor(Math.random()*3)]; let relicAction; if (randomRelic === "🤖 Mini Me") relicAction = () => { player.miniMes.push({x: player.x, y: player.y, hp: 100, maxHp: 100, fireTimer: 0}); closeEpicModal(); }; if (randomRelic === "🌀 Palle Rotanti") relicAction = () => { player.hasOrbs = true; closeEpicModal(); }; if (randomRelic === "🛡️ Scudo Rigenerativo") relicAction = () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeEpicModal(); }; let pool = [ { name: `<span class="upgrade-title" style="color:#bf00ff;">💎 20 Cristalli</span>`, apply: () => { totalCrystals+=20; sessionCrystals+=20; localStorage.setItem('survivorCrystals', totalCrystals); document.getElementById('crystal-count').innerText = sessionCrystals; closeEpicModal(); } }, { name: `<span class="upgrade-title" style="color:#00ffff;">🎁 ${randomRelic}</span>`, apply: relicAction }, { name: `<span class="upgrade-title" style="color:#00ff00;">❤️ Cura + ESP (2 Livelli)</span>`, apply: () => { player.hp = player.maxHp; updateBarsUI(); xp += xpNeeded + Math.floor(xpNeeded * 1.5); closeEpicModal(); } } ]; for(let i=0; i<3; i++) { let btn = document.getElementById('epic-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('epic-modal').style.display = 'block'; }
 function closeEpicModal() { document.getElementById('epic-modal').style.display = 'none'; paused = false; }
 
+function showBossRelicModal() { paused = true; let pool = [ { name: `<span class="upgrade-title">🌀 Palle Rotanti</span><span class="upgrade-desc">2 sfere lasciano una scia dannosa</span>`, apply: () => { player.hasOrbs = true; closeBossModal(); } }, { name: `<span class="upgrade-title">🛡️ Scudo Rigenerativo</span><span class="upgrade-desc">Assorbe danni e si ricarica da solo</span>`, apply: () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeBossModal(); } } ]; if (player.miniMes.length < 3) { pool.push({ name: `<span class="upgrade-title">🤖 Mini Me</span><span class="upgrade-desc">Un robottino alleato che spara per te</span>`, apply: () => { player.miniMes.push({x: player.x, y: player.y, hp: 100, maxHp: 100, fireTimer: 0}); closeBossModal(); } }); } else { pool.push({ name: `<span class="upgrade-title">❤️ Titanico</span><span class="upgrade-desc">Aumenta e cura tutti gli HP</span>`, apply: () => { player.maxHp += 100; player.hp = player.maxHp; updateBarsUI(); closeBossModal(); } }); } for(let i=0; i<3; i++) { let btn = document.getElementById('boss-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('boss-modal').style.display = 'block'; }
+function closeBossModal() { document.getElementById('boss-modal').style.display = 'none'; paused = false; }
 function handleNewWeapon(weaponData) { if (player.weapons.length < 2) { giveWeapon(weaponData); finishUpgrade(); } else { pendingWeapon = weaponData; document.getElementById('new-weapon-name').innerHTML = `<span style="color:${weaponData.color}">${weaponData.name}</span>`; document.getElementById('rep-btn0').innerHTML = `<span class="upgrade-title" style="color:${player.weapons[0].color}">Scarta ${player.weapons[0].name}</span><span class="upgrade-desc">Lv. ${player.weapons[0].level}</span>`; document.getElementById('rep-btn1').innerHTML = `<span class="upgrade-title" style="color:${player.weapons[1].color}">Scarta ${player.weapons[1].name}</span><span class="upgrade-desc">Lv. ${player.weapons[1].level}</span>`; document.getElementById('replace-modal').style.display = 'block'; } }
 function confirmReplace(slotIndex) { player.weapons[slotIndex] = { ...pendingWeapon, level: 1, currentDamage: pendingWeapon.baseDamage, currentFireRate: pendingWeapon.fireRate, fireTimer: 0 }; updateWeaponsUI(); document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
 function cancelReplace() { document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
