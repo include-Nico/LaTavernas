@@ -19,14 +19,20 @@ let chestEpicImg = new Image(); chestEpicImg.src = 'chestepic.png';
 
 let isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 let controlMode = isTouchDevice ? 'mobile' : 'pc';
-let joyX = 0, joyY = 0; let isDraggingJoy = false; let joyBaseRect; const maxJoyDist = 55; 
-const joyZone = document.getElementById('joystick-zone'); const joyStick = document.getElementById('joystick-stick');
+
+// NUOVA GESTIONE JOYSTICK FLUTTUANTE
+let joyX = 0, joyY = 0; 
+let isDraggingJoy = false; 
+let joyStartX = 0, joyStartY = 0; 
+const maxJoyDist = 55; 
+const joyZone = document.getElementById('joystick-zone'); 
+const joyBase = document.getElementById('joystick-base');
+const joyStick = document.getElementById('joystick-stick');
 
 let keys = {}; 
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// --- SISTEMA ARENA BOSS ---
 let bossArena = { active: false, x: 0, y: 0, radius: 800 };
 
 function distToSegment(px, py, x1, y1, x2, y2) { let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); if (l2 === 0) return Math.hypot(px - x1, py - y1); let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))); }
@@ -67,36 +73,21 @@ function savePlayerName() { let inputVal = document.getElementById('player-name-
 function showSettings() { document.getElementById('settings-modal').style.display = 'block'; }
 function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 
-// --- GESTIONE CODICI SEGRETI AGGIORNATA ---
 function checkCheatCode() {
-    let input = document.getElementById('cheat-input').value.trim().toLowerCase(); // Rende case-insensitive
-    
+    let input = document.getElementById('cheat-input').value.trim().toLowerCase(); 
     if (input === "160105") { 
-        cheatUnlocked = true; 
-        localStorage.setItem('survivorCheat', 'true'); 
-        unlockedEquip = []; 
-        ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); });
+        cheatUnlocked = true; localStorage.setItem('survivorCheat', 'true'); 
+        unlockedEquip = []; ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); });
         localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip));
         alert("✔️ CODICE ACCETTATO!\nTutti i personaggi e gli equipaggiamenti sono sbloccati per sempre."); 
-        closeSettings(); 
+        closeSettings(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+    } else if (input === "crystall" || input === "crystal" || input === "cristalli") {
+        totalCrystals += 1000; localStorage.setItem('survivorCrystals', totalCrystals);
+        alert("💎 +1000 CRISTALLI!\nHai ricevuto una fornitura di cristalli."); closeSettings(); 
         if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
-    } 
-    else if (input === "crystall" || input === "crystal" || input === "cristalli") {
-        totalCrystals += 1000;
-        localStorage.setItem('survivorCrystals', totalCrystals);
-        alert("💎 +1000 CRISTALLI!\nHai ricevuto una fornitura di cristalli.");
-        closeSettings(); 
-        if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
-        document.getElementById('menu-crystal-count').innerText = totalCrystals; // Aggiorna UI
-    }
-    else if (input === "reset") {
-        localStorage.clear();
-        alert("🔄 PROGRESSI RESETTATI!\nTutti i dati di gioco sono stati cancellati. Il gioco si riavvierà per applicare le modifiche.");
-        location.reload(); // Forza ricaricamento pulito della pagina
-    }
-    else { 
-        alert("❌ Codice errato."); 
-    } 
+    } else if (input === "reset") {
+        localStorage.clear(); alert("🔄 PROGRESSI RESETTATI!\nIl gioco si riavvierà."); location.reload(); 
+    } else { alert("❌ Codice errato."); } 
     document.getElementById('cheat-input').value = "";
 }
 
@@ -149,7 +140,9 @@ function startGame() {
     let amuletIcon = ""; if (equippedItems.amuleto) { let item = EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto); if (item) amuletIcon = item.icon; }
     document.getElementById('amulet-icon-ui').innerText = amuletIcon; document.getElementById('amulet-icon-ui').style.opacity = '1';
     document.getElementById('main-menu').style.display = 'none'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'block'; canvas.style.display = 'block';
-    document.getElementById('joystick-zone').style.display = (controlMode === 'mobile') ? 'flex' : 'none';
+    
+    // Attiva lo strato del joystick se mobile
+    document.getElementById('joystick-zone').style.display = (controlMode === 'mobile') ? 'block' : 'none';
     
     player = { x: 0, y: 0, size: 20, speed: 4, hp: 100, maxHp: 100, pickupRange: 80, weapons: [], shield: 0, maxShield: 0, lastHitTimer: 0, iFrames: 0, hasOrbs: false, orbAngle: 0, orbTrail: [], miniMes: [], lastBossLevel: 0, charId: selectedCharId, hasRevived: false };
     enemies = []; bullets = []; beams = []; explosions = []; elementalTrails = []; enemyBullets = []; gems = []; rocks = []; chests = []; xp = 0; level = 1; xpNeeded = 15; frameCount = 0; keys = {}; paused = false; joyX = 0; joyY = 0;
@@ -160,10 +153,46 @@ function startGame() {
 
 function triggerGameOver() { paused = true; gameState = "GAMEOVER"; if (level > maxLevelReached) { maxLevelReached = level; localStorage.setItem('survivorMaxLevel', maxLevelReached); } document.getElementById('run-crystals').innerText = sessionCrystals; document.getElementById('final-level').innerText = level; document.getElementById('game-ui').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'flex'; }
 
-joyZone.addEventListener('touchstart', handleJoyStart, {passive: false}); joyZone.addEventListener('touchmove', handleJoyMove, {passive: false}); joyZone.addEventListener('touchend', handleJoyEnd);
-function handleJoyStart(e) { e.preventDefault(); joyBaseRect = document.getElementById('joystick-base').getBoundingClientRect(); isDraggingJoy = true; handleJoyMove(e); }
-function handleJoyMove(e) { if (!isDraggingJoy) return; e.preventDefault(); let touch = e.touches[0]; let centerX = joyBaseRect.left + joyBaseRect.width / 2; let centerY = joyBaseRect.top + joyBaseRect.height / 2; let dx = touch.clientX - centerX; let dy = touch.clientY - centerY; let dist = Math.hypot(dx, dy); if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; } joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; joyX = dx / maxJoyDist; joyY = dy / maxJoyDist; }
-function handleJoyEnd(e) { isDraggingJoy = false; joyStick.style.transform = `translate(-50%, -50%)`; joyX = 0; joyY = 0; }
+// --- EVENTI DEL JOYSTICK FLUTTUANTE ---
+joyZone.addEventListener('touchstart', handleJoyStart, {passive: false}); 
+joyZone.addEventListener('touchmove', handleJoyMove, {passive: false}); 
+joyZone.addEventListener('touchend', handleJoyEnd);
+
+function handleJoyStart(e) { 
+    e.preventDefault(); 
+    let touch = e.touches[0]; 
+    joyStartX = touch.clientX; 
+    joyStartY = touch.clientY;
+    
+    joyBase.style.display = 'block';
+    joyBase.style.left = joyStartX + 'px';
+    joyBase.style.top = joyStartY + 'px';
+    
+    isDraggingJoy = true; 
+    handleJoyMove(e); 
+}
+
+function handleJoyMove(e) { 
+    if (!isDraggingJoy) return; 
+    e.preventDefault(); 
+    let touch = e.touches[0]; 
+    let dx = touch.clientX - joyStartX; 
+    let dy = touch.clientY - joyStartY; 
+    let dist = Math.hypot(dx, dy); 
+    
+    if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; } 
+    joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; 
+    joyX = dx / maxJoyDist; joyY = dy / maxJoyDist; 
+}
+
+function handleJoyEnd(e) { 
+    if(e.touches.length === 0) {
+        isDraggingJoy = false; 
+        joyBase.style.display = 'none';
+        joyStick.style.transform = `translate(-50%, -50%)`; 
+        joyX = 0; joyY = 0; 
+    }
+}
 
 function updateBarsUI() { document.getElementById('hp-bar-fill').style.width = (Math.max(0, player.hp) / player.maxHp * 100) + '%'; if(player.maxShield > 0) { document.getElementById('shield-bar-fill').style.width = (Math.max(0, player.shield) / player.maxShield * 100) + '%'; } }
 function updateWeaponsUI() { const ui = document.getElementById('weapons-ui'); ui.innerHTML = ''; player.weapons.forEach(w => { ui.innerHTML += `<div class="weapon-slot" style="color:${w.color}">${w.name} <span class="weapon-lvl">Lv.${w.level}</span></div>`; }); }
@@ -189,7 +218,6 @@ function update() {
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
     
-    // COLLISIONI MURI ARENA BOSS (Player)
     if (bossArena.active) {
         if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
         if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
@@ -496,7 +524,6 @@ function draw() {
     for(let x = -offsetX; x < viewW; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, viewH); ctx.stroke(); } 
     for(let y = -offsetY; y < viewH; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(viewW, y); ctx.stroke(); }
     
-    // --- DISEGNO ARENA BOSS ---
     if (bossArena.active) {
         ctx.strokeStyle = "rgba(255, 0, 0, 0.6)"; ctx.lineWidth = 10; ctx.setLineDash([20, 15]);
         ctx.beginPath(); ctx.arc(bossArena.x - camX, bossArena.y - camY, bossArena.radius, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
@@ -512,7 +539,6 @@ function draw() {
         else { ctx.fillStyle = `rgba(255, 80, 0, ${alpha * 0.5})`; ctx.beginPath(); ctx.arc(exp.x - camX, exp.y - camY, exp.radius, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = `rgba(255, 200, 0, ${alpha})`; ctx.lineWidth = 3; ctx.stroke(); }
     });
 
-    // DISEGNO CASSE
     chests.forEach(c => { 
         let chestWidth = c.size * 2.8; let chestHeight = c.size * 1.8; let drawX = c.x - camX - (chestWidth / 2); let drawY = c.y - camY - (chestHeight / 2); 
         if (c.isSpecial) { 
@@ -535,7 +561,6 @@ function draw() {
         else { ctx.fillStyle = g.isSuper ? '#ffa500' : '#00ffff'; ctx.beginPath(); ctx.arc(g.x - camX, g.y - camY, g.isSuper ? 8 : 4, 0, Math.PI*2); ctx.fill(); }
     });
 
-    // Palle di fuoco Boss vs Proiettili nemici base
     enemyBullets.forEach(b => { 
         if (b.isFireball) {
             ctx.fillStyle = '#ff4500'; ctx.shadowBlur = 15; ctx.shadowColor = 'red';
@@ -562,7 +587,6 @@ function draw() {
         ctx.fillStyle = currentFill; ctx.fillRect(bx - bodyW/2, by - bodyH/2, bodyW, bodyH); ctx.beginPath(); ctx.arc(bx, by - bodyH/2 - e.size*0.3, e.size * 0.9, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; 
         if(e.type === 'miniboss') { ctx.fillStyle = 'black'; ctx.fillRect(bx - 40, by - e.size*2.5, 80, 8); ctx.fillStyle = 'red'; ctx.fillRect(bx - 40, by - e.size*2.5, 80 * (Math.max(0, e.hp)/e.maxHp), 8); } 
 
-        // DISEGNO TELEGRAFIA BOSS AVANZATO
         if (e.type === 'miniboss' && e.advanced && e.state === 'telegraph_dash') {
             let tx = e.targetX - camX; let ty = e.targetY - camY;
             ctx.strokeStyle = "rgba(255, 0, 0, 0.8)"; ctx.lineWidth = 3;
@@ -603,7 +627,6 @@ function draw() {
 
     ctx.font = "bold 20px Arial"; ctx.fillStyle = "white"; ctx.shadowBlur = 5; ctx.shadowColor = "black"; ctx.fillText(activePlayerName, screenCenterX, screenCenterY - pBodyH/2 - player.size - 25); ctx.shadowBlur = 0;
 
-    // --- BUSSOLE ---
     let normalChests = chests.filter(c => !c.isSpecial && !c.isEpic && !c.isBossChest);
     if (normalChests.length > 0) { let closestChest = normalChests.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev); let dist = Math.hypot(closestChest.x - player.x, closestChest.y - player.y); if (dist > 200 && dist < 1500) { let angle = Math.atan2(closestChest.y - player.y, closestChest.x - player.x); ctx.save(); ctx.translate(screenCenterX, screenCenterY); ctx.rotate(angle); ctx.fillStyle = 'gold'; ctx.shadowColor = 'yellow'; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(80, 0); ctx.lineTo(60, -15); ctx.lineTo(60, 15); ctx.fill(); ctx.restore(); } }
     
