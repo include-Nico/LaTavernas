@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survivor-like</title>
+    <title>Survivor-like: Livelli Eroi & Veleno</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,20 +14,22 @@
         <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
         <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
         <button class="menu-btn" onclick="showEquipmentMenu()" style="border-color: #bf00ff; box-shadow: 0 5px 15px rgba(191, 0, 255, 0.3);">🎒 EQUIPAGGIAMENTO</button>
-        
         <button class="settings-gear" onclick="showSettings()">⚙️</button>
     </div>
 
     <div id="equipment-select" class="fullscreen-menu" style="display: none;">
+        <button class="back-btn" onclick="backToMenu()">⬅</button>
         <h2>Armeria <span style="color:#bf00ff; text-shadow: 0 0 10px #bf00ff;">💎 <span id="menu-crystal-count">0</span></span></h2>
+        
+        <div id="double-amulet-container" style="margin-bottom: 15px;"></div>
+
         <div class="equip-section" id="equip-container"></div>
-        <button class="menu-btn" style="margin-top: 20px; background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
 
     <div id="character-select" class="fullscreen-menu" style="display: none;">
-        <h2>Scegli il tuo Eroe</h2>
+        <button class="back-btn" onclick="backToMenu()">⬅</button>
+        <h2>Scegli il tuo Eroe <span style="color:#bf00ff; font-size:20px;">(💎 <span id="char-crystal-count">0</span>)</span></h2>
         <div id="char-cards-container" class="char-container"></div>
-        <button class="menu-btn" style="margin-top: 30px; background: #555;" onclick="backToMenu()">Torna al Menu</button>
     </div>
 
     <div id="game-over-screen" class="fullscreen-menu" style="display: none; background: rgba(20, 0, 0, 0.9);">
@@ -46,7 +48,7 @@
                     <div class="bar-row">
                         <span class="bar-icon" style="color:red;">❤</span>
                         <div class="hp-bar-bg"><div id="hp-bar-fill"></div></div>
-                        <span id="amulet-icon-ui" style="font-size: 24px; margin-left: 10px; text-shadow: 0 0 10px #fff;"></span>
+                        <span id="amulet-icon-ui" style="font-size: 24px; margin-left: 10px; text-shadow: 0 0 10px #fff; white-space: nowrap;"></span>
                     </div>
                     <div class="bar-row" id="shield-ui">
                         <span class="bar-icon" style="color:cyan;">🛡️</span>
@@ -62,18 +64,16 @@
         <div id="xp-bar-container"><div id="xp-bar"></div></div>
         
         <div id="joystick-zone" style="display: none;">
-            <div id="joystick-base">
-                <div id="joystick-stick"></div>
-            </div>
+            <div id="joystick-base"><div id="joystick-stick"></div></div>
         </div>
     </div>
     
     <canvas id="gameCanvas" style="display: none;"></canvas>
 
     <div id="settings-modal" class="modal">
-        <h2 style="color: #fff; margin-top:0;">CODICE SEGRETO</h2>
+        <h2 style="color: #fff; margin-top:0;">CODICI SEGRETI</h2>
         <input type="text" id="cheat-input" placeholder="Inserisci codice...">
-        <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Sblocca Tutto</span></button>
+        <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Conferma</span></button>
         <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="closeSettings()"><span class="upgrade-title">Chiudi</span></button>
     </div>
 
@@ -96,6 +96,7 @@
         <p>Scartare un'arma per prendere <br><span id="new-weapon-name" style="color:#00ffff; font-weight:bold; font-size:24px;"></span>?</p>
         <button class="upgrade-btn" id="rep-btn0" onclick="confirmReplace(0)"></button>
         <button class="upgrade-btn" id="rep-btn1" onclick="confirmReplace(1)"></button>
+        <button class="upgrade-btn" id="rep-btn2" onclick="confirmReplace(2)" style="display:none;"></button>
         <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="cancelReplace()"><span class="upgrade-title">Rifiuta Arma</span></button>
     </div>
 
@@ -118,4 +119,3 @@
     <script src="game.js"></script>
 </body>
 </html>
-
