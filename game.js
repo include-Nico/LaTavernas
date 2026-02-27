@@ -326,7 +326,6 @@ function update() {
         }
 
         let outOfRange = Math.hypot(b.x - b.startX, b.y - b.startY) > b.range;
-        // DISTRUGGI PROIETTILI SE TOCCANO IL MURO DELL'ARENA
         let hitArenaWall = bossArena.active && Math.hypot(b.x - bossArena.x, b.y - bossArena.y) + b.size > bossArena.radius;
 
         if (outOfRange || hitArenaWall) { 
@@ -406,7 +405,8 @@ function update() {
         } 
     }
     
-    if (Math.random() < 0.0008 && chests.length < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false, isEpic: false }); }
+    let normalChestsCount = chests.filter(c => !c.isSpecial && !c.isEpic).length;
+    if (Math.random() < 0.0015 && normalChestsCount < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false, isEpic: false }); }
     
     if (Math.random() < 0.0002) {
         let angle = Math.random() * Math.PI * 2; let dist = 800 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; 
@@ -419,7 +419,6 @@ function update() {
     for (let i = chests.length - 1; i >= 0; i--) { 
         let c = chests[i]; 
         
-        // DESPAWN CASSE LONTANE (tranne il Boss)
         if (!c.isBossChest && Math.hypot(player.x - c.x, player.y - c.y) > 3000) {
             chests.splice(i, 1);
             continue;
@@ -432,7 +431,18 @@ function update() {
             else { 
                 let rand = Math.random(); 
                 if (rand < 0.4) { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); updateBarsUI(); showItemFeedback("✚ CURA", "#00ff00"); } 
-                else if (rand < 0.7) { let sd = Math.max(canvas.width, canvas.height); enemies.forEach(e => { if(Math.hypot(e.x - player.x, e.y - player.y) < sd) { if (e.type !== 'miniboss') e.hp -= 10000; else e.hp -= 500; e.hitTimer = 5; } }); showItemFeedback("💣 BOMBA!", "#ff4500"); } 
+                else if (rand < 0.7) { 
+                    let sd = Math.max(canvas.width, canvas.height); 
+                    for(let k = enemies.length - 1; k >= 0; k--) {
+                        let eTarget = enemies[k];
+                        if(Math.hypot(eTarget.x - player.x, eTarget.y - player.y) < sd) { 
+                            if (eTarget.type !== 'miniboss') eTarget.hp -= 10000; else eTarget.hp -= 500; 
+                            eTarget.hitTimer = 5; 
+                            if (eTarget.hp <= 0 && !eTarget.dead) { eTarget.dead = true; handleEnemyDeath(eTarget, k); }
+                        } 
+                    }
+                    showItemFeedback("💣 BOMBA!", "#ff4500"); 
+                } 
                 else { showItemFeedback("⬆️ POTENZIAMENTO!", "#ffff00"); freeUpgrade(); } 
             } 
         } 
@@ -463,7 +473,6 @@ function update() {
         if (e.dead) { enemies.splice(ei, 1); continue; } 
         if (Math.hypot(player.x - e.x, player.y - e.y) > 2500) { enemies.splice(ei, 1); continue; } 
         
-        // BLOCCA IL BOSS DENTRO L'ARENA
         if (bossArena.active && e.type === 'miniboss') {
             if (Math.hypot(e.x - bossArena.x, e.y - bossArena.y) > bossArena.radius - e.size) {
                 let pullA = Math.atan2(e.y - bossArena.y, e.x - bossArena.x);
@@ -537,9 +546,22 @@ function update() {
         if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { 
             if (player.iFrames <= 0) { if (Math.random() < corazzaDodge) { showItemFeedback("SCHIVATA!", "#00ff00"); player.iFrames = 20; } else { damagePlayer(1); player.iFrames = 10; } }
         } 
+        
+        // --- IL BLOCCO FONDAMENTALE CHE MANCAVA ---
+        for (let bi = bullets.length - 1; bi >= 0; bi--) { 
+            let b = bullets[bi]; 
+            if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size + 35) { 
+                if (b.weaponId === 'granata') { explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20, type: 'fire'}); } 
+                else if (b.weaponId === 'freezer') { explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: 0, life: 180, maxLife: 180, type: 'ice'}); } 
+                else if (b.weaponId === 'cerbottana') { e.hp -= b.damage; e.hitTimer = 5; e.poisonTimer = 300; e.poisonDmg = b.poisonDmg + (b.level * 2); }
+                else { e.hp -= b.damage; e.hitTimer = 5; }
+                bullets.splice(bi, 1); 
+            } 
+        } 
+        if (e.hp <= 0 && !e.dead) { e.dead = true; handleEnemyDeath(e, ei); } 
+        // ------------------------------------------
     }
 
-    // SCORRIMENTO GEMME E LOGICA ESPERIENZA
     for (let gi = gems.length - 1; gi >= 0; gi--) { 
         let g = gems[gi]; if (Math.hypot(player.x - g.x, player.y - g.y) > 2500) { gems.splice(gi, 1); continue; } 
         let dist = Math.hypot(player.x - g.x, player.y - g.y); 
@@ -557,13 +579,9 @@ function update() {
         } 
     }
 
-    // CHECK LEVEL UP
     document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%';
-    if (xp >= xpNeeded && !paused) {
-        levelUp();
-    }
+    if (xp >= xpNeeded && !paused) { levelUp(); }
 }
-
 function handleEnemyDeath(e, ei) {
     if (e.type === 'miniboss') { 
         chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true, isEpic: false, isBossChest: true }); 
