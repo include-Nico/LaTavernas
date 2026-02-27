@@ -425,7 +425,7 @@ function update() {
     for (let i = chests.length - 1; i >= 0; i--) { 
         let c = chests[i]; 
         
-        // DESPAWN CASSE (tranne il Boss)
+        // DESPAWN CASSE LONTANE (tranne il Boss)
         if (!c.isBossChest && Math.hypot(player.x - c.x, player.y - c.y) > 3000) {
             chests.splice(i, 1);
             continue;
@@ -545,6 +545,7 @@ function update() {
         } 
     }
 
+    // SCORRIMENTO GEMME E LOGICA ESPERIENZA
     for (let gi = gems.length - 1; gi >= 0; gi--) { 
         let g = gems[gi]; if (Math.hypot(player.x - g.x, player.y - g.y) > 2500) { gems.splice(gi, 1); continue; } 
         let dist = Math.hypot(player.x - g.x, player.y - g.y); 
@@ -695,6 +696,7 @@ function draw() {
     player.weapons.forEach((w, index) => {
         let angle = 0;
         
+        // BASTONE VELENOSO
         if (w.id === 'bastone_veleno') {
             angle = -Math.PI / 2; 
             if (w.fireTimer < 20) { angle = 0 - (Math.PI / 2) * (w.fireTimer / 20); }
@@ -823,7 +825,8 @@ function levelUp() {
     
     if (level % 5 === 0 && player.lastBossLevel !== level) { 
         player.lastBossLevel = level; 
-        let bossHp = 5000 * (level / 5); let bossSpeed = 0.8 + (level * 0.02); 
+        let bossHp = 3000 * (level / 5); 
+        let bossSpeed = 0.8 + (level * 0.02); 
         enemies.push({ x: player.x, y: player.y - 600, hp: bossHp, maxHp: bossHp, speed: bossSpeed, originalSpeed: bossSpeed, size: 45, type: 'miniboss', color: 'gold', fireTimer: 0, hitTimer: 0, frozenTimer: 0, burnTimer: 0, poisonTimer: 0, dead: false, advanced: true, state: 'idle', stateTimer: 0, targetX: 0, targetY: 0, phaseMultiplier: Math.floor(level/5) }); 
         
         bossArena = { active: true, x: player.x, y: player.y, radius: 900 }; setTimeout(() => { showItemFeedback("⚠️ ARENA DEL TITANO! ⚠️", "#ff0000"); }, 500); 
