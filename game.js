@@ -30,9 +30,8 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// --- SISTEMI DELLA MAPPA E DEL BOSS ---
 let bossArena = { active: false, x: 0, y: 0, radius: 800 };
-let rockTelegraphs = []; // I segnali ⚠️ per i sassi che nascono durante il boss
+let rockTelegraphs = [];
 
 function distToSegment(px, py, x1, y1, x2, y2) { let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); if (l2 === 0) return Math.hypot(px - x1, py - y1); let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))); }
 
@@ -44,7 +43,13 @@ const WEAPON_MODELS = {
     granata: (ctx, s, c) => { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); },
     razzo: (ctx, s, c) => { ctx.fillStyle = "#445555"; ctx.fillRect(-s/2, -s/4, s*2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/2, s/4, s/2, s/2); ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); },
     freezer: (ctx, s, c) => { ctx.fillStyle = "#eeeeee"; ctx.fillRect(0, -s/4, s*1.2, s/2); ctx.fillStyle = "#333333"; ctx.fillRect(0, s/4, s/2, s/1.5); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(-s/4, 0, s/1.5, 0, Math.PI*2); ctx.fill(); },
-    bastone_veleno: (ctx, s, c) => { ctx.fillStyle = "#4a5d23"; ctx.fillRect(-s, -s/8, s*3, s/4); ctx.fillStyle = c; ctx.shadowBlur = 20; ctx.shadowColor = c; ctx.beginPath(); ctx.moveTo(s*2, -s/2); ctx.lineTo(s*2.8, 0); ctx.lineTo(s*2, s/2); ctx.fill(); ctx.shadowBlur = 0; },
+    // BASTONE VELENOSO: Graficamente identico al bastone normale, ma verde.
+    bastone_veleno: (ctx, s, c) => { 
+        ctx.fillStyle = "#4a5d23"; ctx.fillRect(-s, -s/10, s*3.5, s/5); 
+        ctx.fillStyle = c; ctx.shadowBlur = 15; ctx.shadowColor = c; 
+        ctx.beginPath(); ctx.arc(s*2.5, 0, s/2.5, 0, Math.PI*2); ctx.fill(); 
+        ctx.shadowBlur = 0; ctx.strokeStyle = "#113311"; ctx.lineWidth = 3; ctx.stroke(); 
+    },
     uzi: (ctx, s, c) => { ctx.fillStyle = "#555"; ctx.fillRect(0, -s/6, s*1.2, s/3); ctx.fillStyle = "#222"; ctx.fillRect(0, s/6, s/3, s/1.2); ctx.fillRect(s*0.8, s/6, s/4, s/2); },
     cerbottana: (ctx, s, c) => { ctx.fillStyle = "#8b5a2b"; ctx.fillRect(-s/2, -s/8, s*2.5, s/4); ctx.fillStyle = "#333"; ctx.fillRect(s*1.8, -s/6, s/4, s/3); }
 };
@@ -106,7 +111,7 @@ function showEquipmentMenu() { document.getElementById('main-menu').style.displa
 function updateEquipMenuUI() {
     document.getElementById('menu-crystal-count').innerText = totalCrystals;
     let dAmCont = document.getElementById('double-amulet-container');
-    if (hasDoubleAmulet) { dAmCont.innerHTML = `<span style="color:gold; font-weight:bold;">✨ Doppio Amuleto Sbloccato!</span>`; } else { dAmCont.innerHTML = `<button class="equip-btn buy" style="background:#ffaa00; color:black;" ${totalCrystals >= 3000 ? '' : 'disabled'} onclick="buyDoubleAmulet()">Sblocca 2° Amuleto (💎 3000)</button>`; }
+    if (hasDoubleAmulet) { dAmCont.innerHTML = `<span style="color:gold; font-weight:bold;">🎒 Zaino Sbloccato (2 Amuleti Equipaggiabili)!</span>`; } else { dAmCont.innerHTML = `<button class="equip-btn buy" style="background:#ffaa00; color:black;" ${totalCrystals >= 3000 ? '' : 'disabled'} onclick="buyDoubleAmulet()">Compra Zaino (💎 3000) - Sblocca 2° Amuleto</button>`; }
 
     const container = document.getElementById('equip-container'); container.innerHTML = '';
     ['elmo', 'corazza', 'amuleto'].forEach(category => {
@@ -124,7 +129,7 @@ function updateEquipMenuUI() {
 function buyDoubleAmulet() { if (totalCrystals >= 3000) { totalCrystals -= 3000; hasDoubleAmulet = true; localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorDoubleAmulet', 'true'); updateEquipMenuUI(); } }
 function buyEquip(id, price) { if (totalCrystals >= price) { totalCrystals -= price; unlockedEquip.push(id); localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip)); updateEquipMenuUI(); } }
 function equipItem(category, id) { 
-    if (category === 'amuleto') { if (!equippedItems.amuleto1) equippedItems.amuleto1 = id; else if (hasDoubleAmulet && !equippedItems.amuleto2 && equippedItems.amuleto1 !== id) equippedItems.amuleto2 = id; else equippedItems.amuleto1 = id; } else { equippedItems[category] = id; }
+    if (category === 'amuleto') { if (!hasDoubleAmulet) { equippedItems.amuleto1 = id; equippedItems.amuleto2 = null; } else { if (!equippedItems.amuleto1) equippedItems.amuleto1 = id; else if (!equippedItems.amuleto2 && equippedItems.amuleto1 !== id) equippedItems.amuleto2 = id; else equippedItems.amuleto1 = id; } } else { equippedItems[category] = id; }
     localStorage.setItem('survivorEquipped', JSON.stringify(equippedItems)); updateEquipMenuUI(); 
 }
 function unequipItem(category, id) {
@@ -219,7 +224,6 @@ function update() {
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
     
-    // COLLISIONI MURI ARENA BOSS E SPAWN SASSI
     if (bossArena.active) {
         if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
         if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
@@ -231,10 +235,8 @@ function update() {
         }
     }
     
-    // Gestione Rock Telegraphs (Sassi Arena Boss)
     for (let i = rockTelegraphs.length - 1; i >= 0; i--) {
-        let rt = rockTelegraphs[i];
-        rt.timer--;
+        let rt = rockTelegraphs[i]; rt.timer--;
         if (rt.timer <= 0) {
             if (isPositionFree(rt.x, rt.y, rt.radius)) { rocks.push({ x: rt.x, y: rt.y, size: rt.radius, hp: 60, dead: false }); }
             rockTelegraphs.splice(i, 1);
@@ -587,7 +589,6 @@ function draw() {
         ctx.fillStyle = "rgba(100, 0, 0, 0.1)"; ctx.fill();
     }
 
-    // DISEGNO TELEGRAPHS SASSI ARENA BOSS
     rockTelegraphs.forEach(rt => {
         ctx.strokeStyle = "red"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(rt.x - camX, rt.y - camY, rt.radius, 0, Math.PI * 2); ctx.stroke();
@@ -672,8 +673,22 @@ function draw() {
     let screenCenterX = viewW / 2; let screenCenterY = viewH / 2;
     
     player.weapons.forEach((w, index) => {
-        let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range); let angle = 0;
-        if (targets.length > 0) { let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev); angle = Math.atan2(closest.y - player.y, closest.x - player.x); }
+        let angle = 0;
+        
+        // IL BASTONE VELENOSO STA VERTICALE E SI SBATTE A TERRA
+        if (w.id === 'bastone_veleno') {
+            angle = -Math.PI / 2; 
+            if (w.fireTimer < 20) {
+                angle = 0 - (Math.PI / 2) * (w.fireTimer / 20);
+            }
+        } else {
+            let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range);
+            if (targets.length > 0) { 
+                let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev); 
+                angle = Math.atan2(closest.y - player.y, closest.x - player.x); 
+            }
+        }
+        
         ctx.save(); ctx.translate(screenCenterX, screenCenterY); ctx.rotate(angle); 
         
         let handOffsetX = 15; let handOffsetY = 0; 
@@ -682,7 +697,7 @@ function draw() {
         else if (index === 2) { handOffsetX = 25; handOffsetY = 0; }
         
         ctx.translate(handOffsetX, handOffsetY); 
-        if (Math.abs(angle) > Math.PI / 2) { ctx.scale(1, -1); }
+        if (Math.abs(angle) > Math.PI / 2 && w.id !== 'bastone_veleno') { ctx.scale(1, -1); }
         if (WEAPON_MODELS[w.id]) { WEAPON_MODELS[w.id](ctx, w.weaponSize, w.color); } ctx.restore();
     });
 
