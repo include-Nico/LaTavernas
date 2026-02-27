@@ -9,11 +9,9 @@ let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
 let cheatUnlocked = localStorage.getItem('survivorCheat') === 'true'; 
 let totalCrystals = parseInt(localStorage.getItem('survivorCrystals')) || 0;
 let unlockedEquip = JSON.parse(localStorage.getItem('survivorUnlockedEquip')) || [];
-// UPDATE: Supporta due slot amuleti
 let equippedItems = JSON.parse(localStorage.getItem('survivorEquipped')) || { elmo: null, corazza: null, amuleto1: null, amuleto2: null };
 let hasDoubleAmulet = localStorage.getItem('survivorDoubleAmulet') === 'true';
 
-// NUOVO: Livelli Personaggi
 let charLevels = JSON.parse(localStorage.getItem('survivorCharLevels')) || { 0:1, 1:1, 2:1 };
 
 let selectedCharId = 0; 
@@ -32,7 +30,9 @@ let keys = {};
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
+// --- SISTEMI DELLA MAPPA E DEL BOSS ---
 let bossArena = { active: false, x: 0, y: 0, radius: 800 };
+let rockTelegraphs = []; // I segnali ⚠️ per i sassi che nascono durante il boss
 
 function distToSegment(px, py, x1, y1, x2, y2) { let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); if (l2 === 0) return Math.hypot(px - x1, py - y1); let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))); }
 
@@ -44,7 +44,6 @@ const WEAPON_MODELS = {
     granata: (ctx, s, c) => { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); },
     razzo: (ctx, s, c) => { ctx.fillStyle = "#445555"; ctx.fillRect(-s/2, -s/4, s*2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/2, s/4, s/2, s/2); ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); },
     freezer: (ctx, s, c) => { ctx.fillStyle = "#eeeeee"; ctx.fillRect(0, -s/4, s*1.2, s/2); ctx.fillStyle = "#333333"; ctx.fillRect(0, s/4, s/2, s/1.5); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(-s/4, 0, s/1.5, 0, Math.PI*2); ctx.fill(); },
-    // NUOVE ARMI LV 2
     bastone_veleno: (ctx, s, c) => { ctx.fillStyle = "#4a5d23"; ctx.fillRect(-s, -s/8, s*3, s/4); ctx.fillStyle = c; ctx.shadowBlur = 20; ctx.shadowColor = c; ctx.beginPath(); ctx.moveTo(s*2, -s/2); ctx.lineTo(s*2.8, 0); ctx.lineTo(s*2, s/2); ctx.fill(); ctx.shadowBlur = 0; },
     uzi: (ctx, s, c) => { ctx.fillStyle = "#555"; ctx.fillRect(0, -s/6, s*1.2, s/3); ctx.fillStyle = "#222"; ctx.fillRect(0, s/6, s/3, s/1.2); ctx.fillRect(s*0.8, s/6, s/4, s/2); },
     cerbottana: (ctx, s, c) => { ctx.fillStyle = "#8b5a2b"; ctx.fillRect(-s/2, -s/8, s*2.5, s/4); ctx.fillStyle = "#333"; ctx.fillRect(s*1.8, -s/6, s/4, s/3); }
@@ -58,8 +57,7 @@ const WEAPONS_DB = {
     granata: { id: 'granata', name: "Granate", baseDamage: 50, fireRate: 90, range: 400, speed: 8,  weaponSize: 16, bulletSize: 10, color: "#888", muzzleOffset: 15 },
     razzo:   { id: 'razzo',   name: "Razzo",   baseDamage: 60, fireRate: 100,range: 1000,speed: 10, weaponSize: 25, bulletSize: 14, color: "orange", muzzleOffset: 55 },
     freezer: { id: 'freezer', name: "Freezer", baseDamage: 20, fireRate: 35, range: 600, speed: 15, weaponSize: 20, bulletSize: 10, color: "#aaddff", muzzleOffset: 25 },
-    // NUOVE ARMI LV 2
-    bastone_veleno: { id: 'bastone_veleno', name: "Bastone Velenoso", baseDamage: 15, fireRate: 120, range: 150, speed: 0, weaponSize: 20, bulletSize: 0, color: "#00ff00", muzzleOffset: 0 }, // Danno ad Area
+    bastone_veleno: { id: 'bastone_veleno', name: "Bastone Velenoso", baseDamage: 15, fireRate: 120, range: 150, speed: 0, weaponSize: 20, bulletSize: 0, color: "#00ff00", muzzleOffset: 0 }, 
     uzi: { id: 'uzi', name: "Uzi", baseDamage: 5, fireRate: 8, range: 500, speed: 18, weaponSize: 12, bulletSize: 3, color: "yellow", muzzleOffset: 15 },
     cerbottana: { id: 'cerbottana', name: "Cerbottana", baseDamage: 2, fireRate: 20, range: 700, speed: 22, weaponSize: 20, bulletSize: 4, color: "#800080", muzzleOffset: 30, poisonDamage: 5 }
 };
@@ -93,32 +91,22 @@ function checkCheatCode() {
         charLevels = {0:3, 1:3, 2:3}; localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels));
         alert("✔️ CODICE ACCETTATO!\nTutti i personaggi (Lv.3) e gli equipaggiamenti sono sbloccati per sempre."); 
         closeSettings(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
-    } else if (input === "crystall" || input === "crystal" || input === "cristalli") {
+    } else if (input === "tesoro") {
         totalCrystals += 1000; localStorage.setItem('survivorCrystals', totalCrystals);
         alert("💎 +1000 CRISTALLI!\nHai ricevuto una fornitura di cristalli."); closeSettings(); 
         if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
         document.getElementById('menu-crystal-count').innerText = totalCrystals;
-    } else if (input === "reset") {
+    } else if (input === "azzera") {
         localStorage.clear(); alert("🔄 PROGRESSI RESETTATI!\nIl gioco si riavvierà."); location.reload(); 
     } else { alert("❌ Codice errato."); } 
     document.getElementById('cheat-input').value = "";
 }
 
-function showEquipmentMenu() { 
-    document.getElementById('main-menu').style.display = 'none'; 
-    document.getElementById('equipment-select').style.display = 'flex'; 
-    updateEquipMenuUI(); 
-}
+function showEquipmentMenu() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('equipment-select').style.display = 'flex'; updateEquipMenuUI(); }
 function updateEquipMenuUI() {
     document.getElementById('menu-crystal-count').innerText = totalCrystals;
-    
-    // UI Doppio Amuleto
     let dAmCont = document.getElementById('double-amulet-container');
-    if (hasDoubleAmulet) {
-        dAmCont.innerHTML = `<span style="color:gold; font-weight:bold;">✨ Doppio Amuleto Sbloccato!</span>`;
-    } else {
-        dAmCont.innerHTML = `<button class="equip-btn buy" style="background:#ffaa00; color:black;" ${totalCrystals >= 3000 ? '' : 'disabled'} onclick="buyDoubleAmulet()">Sblocca 2° Amuleto (💎 3000)</button>`;
-    }
+    if (hasDoubleAmulet) { dAmCont.innerHTML = `<span style="color:gold; font-weight:bold;">✨ Doppio Amuleto Sbloccato!</span>`; } else { dAmCont.innerHTML = `<button class="equip-btn buy" style="background:#ffaa00; color:black;" ${totalCrystals >= 3000 ? '' : 'disabled'} onclick="buyDoubleAmulet()">Sblocca 2° Amuleto (💎 3000)</button>`; }
 
     const container = document.getElementById('equip-container'); container.innerHTML = '';
     ['elmo', 'corazza', 'amuleto'].forEach(category => {
@@ -126,49 +114,24 @@ function updateEquipMenuUI() {
         let row = document.createElement('div'); row.className = 'char-container';
         EQUIP_DB[category].forEach(item => {
             let isUnlocked = unlockedEquip.includes(item.id); 
-            // Check se è equipaggiato in uno dei due slot per gli amuleti, o nello slot base
             let isEquipped = equippedItems[category] === item.id || (category === 'amuleto' && (equippedItems.amuleto1 === item.id || equippedItems.amuleto2 === item.id));
-            
             let card = document.createElement('div'); card.className = `char-card ${isUnlocked ? 'unlocked' : ''} ${isEquipped ? 'equipped' : ''}`;
-            let btnHtml = ''; 
-            if (isEquipped) { 
-                btnHtml = `<button class="equip-btn equipped" onclick="unequipItem('${category}', '${item.id}')">Rimuovi</button>`; 
-            } else if (isUnlocked) { 
-                btnHtml = `<button class="equip-btn equip" onclick="equipItem('${category}', '${item.id}')">Equipaggia</button>`; 
-            } else { 
-                let canAfford = totalCrystals >= item.price; 
-                btnHtml = `<button class="equip-btn buy" ${canAfford ? '' : 'disabled'} onclick="buyEquip('${item.id}', ${item.price})">Compra 💎 ${item.price}</button>`; 
-            }
+            let btnHtml = ''; if (isEquipped) { btnHtml = `<button class="equip-btn equipped" onclick="unequipItem('${category}', '${item.id}')">Rimuovi</button>`; } else if (isUnlocked) { btnHtml = `<button class="equip-btn equip" onclick="equipItem('${category}', '${item.id}')">Equipaggia</button>`; } else { let canAfford = totalCrystals >= item.price; btnHtml = `<button class="equip-btn buy" ${canAfford ? '' : 'disabled'} onclick="buyEquip('${item.id}', ${item.price})">Compra 💎 ${item.price}</button>`; }
             card.innerHTML = `<div style="font-size:40px; margin-bottom:10px;">${item.icon}</div><h3>${item.name}</h3><p style="color:#aaa; font-size:12px;">${item.desc}</p>${btnHtml}`; row.appendChild(card);
         }); container.appendChild(row);
     });
 }
-function buyDoubleAmulet() {
-    if (totalCrystals >= 3000) { totalCrystals -= 3000; hasDoubleAmulet = true; localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorDoubleAmulet', 'true'); updateEquipMenuUI(); }
-}
+function buyDoubleAmulet() { if (totalCrystals >= 3000) { totalCrystals -= 3000; hasDoubleAmulet = true; localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorDoubleAmulet', 'true'); updateEquipMenuUI(); } }
 function buyEquip(id, price) { if (totalCrystals >= price) { totalCrystals -= price; unlockedEquip.push(id); localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip)); updateEquipMenuUI(); } }
 function equipItem(category, id) { 
-    if (category === 'amuleto') {
-        if (!equippedItems.amuleto1) equippedItems.amuleto1 = id;
-        else if (hasDoubleAmulet && !equippedItems.amuleto2 && equippedItems.amuleto1 !== id) equippedItems.amuleto2 = id;
-        else equippedItems.amuleto1 = id; // Sovrascrive il primo se pieno e non c'è il secondo slot
-    } else {
-        equippedItems[category] = id; 
-    }
+    if (category === 'amuleto') { if (!equippedItems.amuleto1) equippedItems.amuleto1 = id; else if (hasDoubleAmulet && !equippedItems.amuleto2 && equippedItems.amuleto1 !== id) equippedItems.amuleto2 = id; else equippedItems.amuleto1 = id; } else { equippedItems[category] = id; }
     localStorage.setItem('survivorEquipped', JSON.stringify(equippedItems)); updateEquipMenuUI(); 
 }
 function unequipItem(category, id) {
-    if (category === 'amuleto') {
-        if (equippedItems.amuleto1 === id) equippedItems.amuleto1 = null;
-        if (equippedItems.amuleto2 === id) equippedItems.amuleto2 = null;
-    } else {
-        equippedItems[category] = null;
-    }
+    if (category === 'amuleto') { if (equippedItems.amuleto1 === id) equippedItems.amuleto1 = null; if (equippedItems.amuleto2 === id) equippedItems.amuleto2 = null; } else { equippedItems[category] = null; }
     localStorage.setItem('survivorEquipped', JSON.stringify(equippedItems)); updateEquipMenuUI(); 
 }
-
 function getEquipStat(category) { if (!equippedItems[category]) return 0; let item = EQUIP_DB[category].find(x => x.id === equippedItems[category]); return item ? item.value : 0; }
-
 function hasAmulet(amuletId) { return equippedItems.amuleto1 === amuletId || equippedItems.amuleto2 === amuletId; }
 
 function togglePause() { 
@@ -184,13 +147,7 @@ function showMenu() { gameState = "MENU"; document.getElementById('main-menu').s
 function backToMenu() { showMenu(); }
 
 function upgradeChar(id) {
-    if (charLevels[id] < 3 && totalCrystals >= 1000) {
-        totalCrystals -= 1000;
-        charLevels[id]++;
-        localStorage.setItem('survivorCrystals', totalCrystals);
-        localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels));
-        showCharacterSelect();
-    }
+    if (charLevels[id] < 3 && totalCrystals >= 1000) { totalCrystals -= 1000; charLevels[id]++; localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels)); showCharacterSelect(); }
 }
 
 function showCharacterSelect() {
@@ -199,33 +156,14 @@ function showCharacterSelect() {
     const container = document.getElementById('char-cards-container'); container.innerHTML = '';
     CHARACTERS.forEach(char => {
         let isUnlocked = cheatUnlocked || maxLevelReached >= char.reqLevel; let isSelected = selectedCharId === char.id;
-        let cLevel = charLevels[char.id] || 1;
-        let stars = "⭐".repeat(cLevel) + "☆".repeat(3-cLevel);
-        
-        // Arma aggiuntiva in base al livello
-        let wList = [...char.weapons];
-        if (cLevel >= 2) wList.push(char.lv2Weapon);
-        let wNames = wList.map(w => WEAPONS_DB[w].name).join(", ");
-        
+        let cLevel = charLevels[char.id] || 1; let stars = "⭐".repeat(cLevel) + "☆".repeat(3-cLevel);
+        let wList = [...char.weapons]; if (cLevel >= 2) wList.push(char.lv2Weapon); let wNames = wList.map(w => WEAPONS_DB[w].name).join(", ");
         let card = document.createElement('div'); card.className = `char-card ${isUnlocked ? '' : 'locked'} ${isSelected ? 'selected' : ''}`;
-        
         let upgHtml = '';
-        if (isUnlocked && cLevel < 3) {
-            upgHtml = `<button class="btn-level-up" ${totalCrystals < 1000 ? 'disabled' : ''} onclick="event.stopPropagation(); upgradeChar(${char.id})">Level Up (1000💎)</button>`;
-        } else if (cLevel === 3) {
-            upgHtml = `<p style="color:gold; font-size:12px; margin-top:10px;">MAX LEVEL<br>Può impugnare 3 armi!</p>`;
-        }
-
-        card.innerHTML = `
-            <h3>${char.name} <br><span style="font-size:14px; color:gold;">${stars}</span></h3>
-            <p style="color:#aaa; font-size:14px;">${char.desc}</p>
-            <div class="char-weapons-list">${wNames}</div>
-            <p style="color:#00ffff; font-size:12px;">Armi base</p>
-            ${upgHtml}
-            ${!isUnlocked ? `<div class="lock-icon">🔒<br><span style="font-size:14px;">Liv. ${char.reqLevel}</span></div>` : ''}
-        `;
-        if (isUnlocked) { card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); }; }
-        container.appendChild(card);
+        if (isUnlocked && cLevel < 3) { upgHtml = `<button class="btn-level-up" ${totalCrystals < 1000 ? 'disabled' : ''} onclick="event.stopPropagation(); upgradeChar(${char.id})">Level Up (1000💎)</button>`; } 
+        else if (cLevel === 3) { upgHtml = `<p style="color:gold; font-size:12px; margin-top:10px;">MAX LEVEL<br>Può impugnare 3 armi!</p>`; }
+        card.innerHTML = `<h3>${char.name} <br><span style="font-size:14px; color:gold;">${stars}</span></h3><p style="color:#aaa; font-size:14px;">${char.desc}</p><div class="char-weapons-list">${wNames}</div><p style="color:#00ffff; font-size:12px;">Armi base</p>${upgHtml}${!isUnlocked ? `<div class="lock-icon">🔒<br><span style="font-size:14px;">Liv. ${char.reqLevel}</span></div>` : ''}`;
+        if (isUnlocked) { card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); }; } container.appendChild(card);
     });
 }
 
@@ -235,14 +173,13 @@ function startGame() {
     let amuletHTML = ""; 
     if (equippedItems.amuleto1) amuletHTML += EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto1).icon;
     if (equippedItems.amuleto2) amuletHTML += " " + EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto2).icon;
-    document.getElementById('amulet-icon-ui').innerText = amuletHTML; 
-    document.getElementById('amulet-icon-ui').style.opacity = '1';
+    document.getElementById('amulet-icon-ui').innerText = amuletHTML; document.getElementById('amulet-icon-ui').style.opacity = '1';
     
     document.getElementById('main-menu').style.display = 'none'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'block'; canvas.style.display = 'block';
     document.getElementById('joystick-zone').style.display = (controlMode === 'mobile') ? 'block' : 'none';
     
-    let cLevel = charLevels[selectedCharId] || 1;
-    let maxWeps = cLevel === 3 ? 3 : 2;
+    let cLevel = charLevels[selectedCharId] || 1; let maxWeps = cLevel === 3 ? 3 : 2;
+    rockTelegraphs = [];
 
     player = { x: 0, y: 0, size: 20, speed: 4, hp: 100, maxHp: 100, pickupRange: 80, weapons: [], maxWeapons: maxWeps, charLevel: cLevel, shield: 0, maxShield: 0, lastHitTimer: 0, iFrames: 0, hasOrbs: false, orbAngle: 0, orbTrail: [], miniMes: [], lastBossLevel: 0, charId: selectedCharId, hasRevived: false };
     enemies = []; bullets = []; beams = []; explosions = []; elementalTrails = []; enemyBullets = []; gems = []; rocks = []; chests = []; xp = 0; level = 1; xpNeeded = 15; frameCount = 0; keys = {}; paused = false; joyX = 0; joyY = 0;
@@ -282,9 +219,26 @@ function update() {
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
     
+    // COLLISIONI MURI ARENA BOSS E SPAWN SASSI
     if (bossArena.active) {
         if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
         if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
+        
+        if (frameCount % 90 === 0) { 
+            let angle = Math.random() * Math.PI * 2;
+            let dist = Math.random() * (bossArena.radius - 80);
+            rockTelegraphs.push({ x: bossArena.x + Math.cos(angle)*dist, y: bossArena.y + Math.sin(angle)*dist, radius: 30, timer: 60 }); 
+        }
+    }
+    
+    // Gestione Rock Telegraphs (Sassi Arena Boss)
+    for (let i = rockTelegraphs.length - 1; i >= 0; i--) {
+        let rt = rockTelegraphs[i];
+        rt.timer--;
+        if (rt.timer <= 0) {
+            if (isPositionFree(rt.x, rt.y, rt.radius)) { rocks.push({ x: rt.x, y: rt.y, size: rt.radius, hp: 60, dead: false }); }
+            rockTelegraphs.splice(i, 1);
+        }
     }
     
     for (let r of rocks) { if (Math.hypot((player.x + moveX) - r.x, player.y - r.y) < player.size + r.size) canMoveX = false; if (Math.hypot(player.x - r.x, (player.y + moveY) - r.y) < player.size + r.size) canMoveY = false; }
@@ -317,17 +271,15 @@ function update() {
     let applyIce = hasAmulet('amu_ice');
     let applyFire = hasAmulet('amu_fire');
 
-    // --- BALISTICA ARMI ---
     player.weapons.forEach((w, index) => {
         w.fireTimer++;
         if (w.fireTimer >= w.currentFireRate) {
             
-            // Bastone Velenoso (AoE Player Centered)
             if (w.id === 'bastone_veleno') {
                 let pRadius = Math.min(350, w.range + (w.level * 15));
                 explosions.push({x: player.x, y: player.y, radius: pRadius, damage: w.currentDamage, life: 15, maxLife: 15, type: 'poison'});
                 w.fireTimer = 0;
-                return; // Skips bullet logic
+                return; 
             }
 
             let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range);
@@ -335,7 +287,6 @@ function update() {
                 let closest = targets.reduce((prev, curr) => Math.hypot(curr.x - player.x, curr.y - player.y) < Math.hypot(prev.x - player.x, prev.y - player.y) ? curr : prev);
                 let angle = Math.atan2(closest.y - player.y, closest.x - player.x);
                 
-                // Terza Arma (Livello 3)
                 let handOffsetX = 15; let handOffsetY = 0; 
                 if (index === 0) handOffsetY = 15; 
                 else if (index === 1) handOffsetY = -15; 
@@ -421,7 +372,7 @@ function update() {
             if (exp.life === exp.maxLife) { 
                 enemies.forEach(e => {
                     if (!e.dead && Math.hypot(e.x - exp.x, e.y - exp.y) < exp.radius + e.size) {
-                        e.hp -= exp.damage; e.hitTimer = 5; e.poisonTimer = 30; e.poisonDmg = exp.damage; // Breve veleno per il bastone
+                        e.hp -= exp.damage; e.hitTimer = 5; e.poisonTimer = 30; e.poisonDmg = exp.damage; 
                         if (e.hp <= 0 && !e.dead) { e.dead = true; handleEnemyDeath(e, -1); }
                     }
                 });
@@ -526,7 +477,6 @@ function update() {
         if (e.hitTimer > 0) e.hitTimer--;
         if (e.frozenTimer > 0) { e.frozenTimer--; if (e.frozenTimer <= 0) e.speed = e.originalSpeed; }
         if (e.burnTimer > 0) { e.burnTimer--; if (e.burnTimer % 30 === 0) { e.hp -= 10; e.hitTimer = 5; if(e.hp <= 0 && !e.dead) { e.dead=true; handleEnemyDeath(e, ei); continue; } } }
-        // Danno Veleno (Cerbottana)
         if (e.poisonTimer > 0) { e.poisonTimer--; if (e.poisonTimer % 20 === 0) { e.hp -= e.poisonDmg; e.hitTimer = 5; if(e.hp <= 0 && !e.dead) { e.dead=true; handleEnemyDeath(e, ei); continue; } } }
 
         let angle = Math.atan2(player.y - e.y, player.x - e.x); 
@@ -637,6 +587,15 @@ function draw() {
         ctx.fillStyle = "rgba(100, 0, 0, 0.1)"; ctx.fill();
     }
 
+    // DISEGNO TELEGRAPHS SASSI ARENA BOSS
+    rockTelegraphs.forEach(rt => {
+        ctx.strokeStyle = "red"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(rt.x - camX, rt.y - camY, rt.radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; ctx.fill();
+        ctx.font = "20px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "white";
+        ctx.fillText("⚠️", rt.x - camX, rt.y - camY);
+    });
+
     elementalTrails.forEach(t => { let alpha = t.life / t.maxLife; ctx.fillStyle = t.type === 'ice' ? `rgba(0, 255, 255, ${alpha * 0.4})` : `rgba(255, 100, 0, ${alpha * 0.4})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, t.radius, 0, Math.PI*2); ctx.fill(); });
     ctx.fillStyle = '#666'; ctx.strokeStyle = '#444'; ctx.lineWidth = 4; rocks.forEach(r => { ctx.beginPath(); ctx.arc(r.x - camX, r.y - camY, r.size, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
     
@@ -689,7 +648,7 @@ function draw() {
         let currentFill = e.color; 
         if (e.hitTimer > 0) currentFill = "white"; 
         else if (e.frozenTimer > 0) currentFill = "#aaddff"; 
-        else if (e.poisonTimer > 0) currentFill = "#800080"; // Colore Viola Veleno
+        else if (e.poisonTimer > 0) currentFill = "#800080"; 
         else if (e.burnTimer > 0) currentFill = "#ff6600";
         
         let armColor = '#8b0000'; if(e.type === 'miniboss') armColor = '#b8860b'; else if(e.type === 'tank') armColor = '#5a0000'; else if(e.type === 'shooter') armColor = '#4b0082'; 
@@ -785,8 +744,8 @@ function buildUpgradePool() {
         pool.push({ name: `<span class="upgrade-title" style="color:${w.color}">⏫ Potenzia ${w.name} (Lv.${w.level + 1})</span><span class="upgrade-desc">Danni e velocità incrementati</span>`, apply: () => { 
             w.level++; 
             if (w.id !== 'freezer' && w.id !== 'cerbottana') w.currentDamage += Math.floor(w.baseDamage * 0.4); 
-            if (w.id === 'cerbottana') w.poisonDamage += 5; // Aumenta DoT
-            if (w.id === 'bastone_veleno') w.range = Math.min(350, w.range + 15); // Aumenta AoE
+            if (w.id === 'cerbottana') w.poisonDamage += 5; 
+            if (w.id === 'bastone_veleno') w.range = Math.min(350, w.range + 15); 
             w.currentFireRate = Math.max(5, w.currentFireRate - (w.id === 'freezer' ? 8 : 5)); 
             updateWeaponsUI(); finishUpgrade(); 
         }}); 
