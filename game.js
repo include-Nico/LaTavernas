@@ -20,14 +20,8 @@ let chestEpicImg = new Image(); chestEpicImg.src = 'chestepic.png';
 let isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 let controlMode = isTouchDevice ? 'mobile' : 'pc';
 
-// NUOVA GESTIONE JOYSTICK FLUTTUANTE
-let joyX = 0, joyY = 0; 
-let isDraggingJoy = false; 
-let joyStartX = 0, joyStartY = 0; 
-const maxJoyDist = 55; 
-const joyZone = document.getElementById('joystick-zone'); 
-const joyBase = document.getElementById('joystick-base');
-const joyStick = document.getElementById('joystick-stick');
+let joyX = 0, joyY = 0; let isDraggingJoy = false; let joyStartX = 0, joyStartY = 0; const maxJoyDist = 55; 
+const joyZone = document.getElementById('joystick-zone'); const joyBase = document.getElementById('joystick-base'); const joyStick = document.getElementById('joystick-stick');
 
 let keys = {}; 
 window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
@@ -85,6 +79,7 @@ function checkCheatCode() {
         totalCrystals += 1000; localStorage.setItem('survivorCrystals', totalCrystals);
         alert("💎 +1000 CRISTALLI!\nHai ricevuto una fornitura di cristalli."); closeSettings(); 
         if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+        document.getElementById('menu-crystal-count').innerText = totalCrystals;
     } else if (input === "reset") {
         localStorage.clear(); alert("🔄 PROGRESSI RESETTATI!\nIl gioco si riavvierà."); location.reload(); 
     } else { alert("❌ Codice errato."); } 
@@ -140,8 +135,6 @@ function startGame() {
     let amuletIcon = ""; if (equippedItems.amuleto) { let item = EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto); if (item) amuletIcon = item.icon; }
     document.getElementById('amulet-icon-ui').innerText = amuletIcon; document.getElementById('amulet-icon-ui').style.opacity = '1';
     document.getElementById('main-menu').style.display = 'none'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'block'; canvas.style.display = 'block';
-    
-    // Attiva lo strato del joystick se mobile
     document.getElementById('joystick-zone').style.display = (controlMode === 'mobile') ? 'block' : 'none';
     
     player = { x: 0, y: 0, size: 20, speed: 4, hp: 100, maxHp: 100, pickupRange: 80, weapons: [], shield: 0, maxShield: 0, lastHitTimer: 0, iFrames: 0, hasOrbs: false, orbAngle: 0, orbTrail: [], miniMes: [], lastBossLevel: 0, charId: selectedCharId, hasRevived: false };
@@ -153,46 +146,10 @@ function startGame() {
 
 function triggerGameOver() { paused = true; gameState = "GAMEOVER"; if (level > maxLevelReached) { maxLevelReached = level; localStorage.setItem('survivorMaxLevel', maxLevelReached); } document.getElementById('run-crystals').innerText = sessionCrystals; document.getElementById('final-level').innerText = level; document.getElementById('game-ui').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'flex'; }
 
-// --- EVENTI DEL JOYSTICK FLUTTUANTE ---
-joyZone.addEventListener('touchstart', handleJoyStart, {passive: false}); 
-joyZone.addEventListener('touchmove', handleJoyMove, {passive: false}); 
-joyZone.addEventListener('touchend', handleJoyEnd);
-
-function handleJoyStart(e) { 
-    e.preventDefault(); 
-    let touch = e.touches[0]; 
-    joyStartX = touch.clientX; 
-    joyStartY = touch.clientY;
-    
-    joyBase.style.display = 'block';
-    joyBase.style.left = joyStartX + 'px';
-    joyBase.style.top = joyStartY + 'px';
-    
-    isDraggingJoy = true; 
-    handleJoyMove(e); 
-}
-
-function handleJoyMove(e) { 
-    if (!isDraggingJoy) return; 
-    e.preventDefault(); 
-    let touch = e.touches[0]; 
-    let dx = touch.clientX - joyStartX; 
-    let dy = touch.clientY - joyStartY; 
-    let dist = Math.hypot(dx, dy); 
-    
-    if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; } 
-    joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; 
-    joyX = dx / maxJoyDist; joyY = dy / maxJoyDist; 
-}
-
-function handleJoyEnd(e) { 
-    if(e.touches.length === 0) {
-        isDraggingJoy = false; 
-        joyBase.style.display = 'none';
-        joyStick.style.transform = `translate(-50%, -50%)`; 
-        joyX = 0; joyY = 0; 
-    }
-}
+joyZone.addEventListener('touchstart', handleJoyStart, {passive: false}); joyZone.addEventListener('touchmove', handleJoyMove, {passive: false}); joyZone.addEventListener('touchend', handleJoyEnd);
+function handleJoyStart(e) { e.preventDefault(); let touch = e.touches[0]; joyStartX = touch.clientX; joyStartY = touch.clientY; joyBase.style.display = 'block'; joyBase.style.left = joyStartX + 'px'; joyBase.style.top = joyStartY + 'px'; isDraggingJoy = true; handleJoyMove(e); }
+function handleJoyMove(e) { if (!isDraggingJoy) return; e.preventDefault(); let touch = e.touches[0]; let dx = touch.clientX - joyStartX; let dy = touch.clientY - joyStartY; let dist = Math.hypot(dx, dy); if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; } joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; joyX = dx / maxJoyDist; joyY = dy / maxJoyDist; }
+function handleJoyEnd(e) { if(e.touches.length === 0) { isDraggingJoy = false; joyBase.style.display = 'none'; joyStick.style.transform = `translate(-50%, -50%)`; joyX = 0; joyY = 0; } }
 
 function updateBarsUI() { document.getElementById('hp-bar-fill').style.width = (Math.max(0, player.hp) / player.maxHp * 100) + '%'; if(player.maxShield > 0) { document.getElementById('shield-bar-fill').style.width = (Math.max(0, player.shield) / player.maxShield * 100) + '%'; } }
 function updateWeaponsUI() { const ui = document.getElementById('weapons-ui'); ui.innerHTML = ''; player.weapons.forEach(w => { ui.innerHTML += `<div class="weapon-slot" style="color:${w.color}">${w.name} <span class="weapon-lvl">Lv.${w.level}</span></div>`; }); }
@@ -416,6 +373,19 @@ function update() {
                 let pushA = Math.atan2(e.y - bossArena.y, e.x - bossArena.x);
                 e.x = bossArena.x + Math.cos(pushA) * (bossArena.radius + e.size);
                 e.y = bossArena.y + Math.sin(pushA) * (bossArena.radius + e.size);
+            }
+        }
+        
+        // COLLISIONE NEMICI - ROCCE (Evita compenetrazione e fa scivolare)
+        for (let r of rocks) {
+            if (!r.dead) {
+                let distToRock = Math.hypot(e.x - r.x, e.y - r.y);
+                if (distToRock < e.size + r.size) {
+                    let pushA = Math.atan2(e.y - r.y, e.x - r.x);
+                    let overlap = (e.size + r.size) - distToRock;
+                    e.x += Math.cos(pushA) * overlap;
+                    e.y += Math.sin(pushA) * overlap;
+                }
             }
         }
 
