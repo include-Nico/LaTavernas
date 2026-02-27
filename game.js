@@ -330,7 +330,7 @@ function update() {
         }
 
         let outOfRange = Math.hypot(b.x - b.startX, b.y - b.startY) > b.range;
-        // DISTRUGGI PROIETTILI SE TOCCANO IL MURO DELL'ARENA DEL BOSS
+        // DISTRUGGI PROIETTILI SE TOCCANO IL MURO DELL'ARENA
         let hitArenaWall = bossArena.active && Math.hypot(b.x - bossArena.x, b.y - bossArena.y) + b.size > bossArena.radius;
 
         if (outOfRange || hitArenaWall) { 
@@ -404,14 +404,15 @@ function update() {
         
         let hitRock = false; for (let r of rocks) { if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size) { hitRock = true; break; } } 
         if(hitRock) { enemyBullets.splice(i, 1); continue; } 
-        
         if (distToSegment(player.x, player.y, oldX, oldY, b.x, b.y) < player.size + 5) { 
             if (Math.random() < elmoDodge) { showItemFeedback("SCHIVATA!", "#00ffff"); } else { damagePlayer(b.damage); }
             enemyBullets.splice(i, 1); 
         } 
     }
     
-    if (Math.random() < 0.0008 && chests.length < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false, isEpic: false }); }
+    // Generazione Casse Base
+    let normalChestsCount = chests.filter(c => !c.isSpecial && !c.isEpic).length;
+    if (Math.random() < 0.0015 && normalChestsCount < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false, isEpic: false }); }
     
     if (Math.random() < 0.0002) {
         let angle = Math.random() * Math.PI * 2; let dist = 800 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; 
@@ -423,6 +424,13 @@ function update() {
 
     for (let i = chests.length - 1; i >= 0; i--) { 
         let c = chests[i]; 
+        
+        // DESPAWN CASSE (tranne il Boss)
+        if (!c.isBossChest && Math.hypot(player.x - c.x, player.y - c.y) > 3000) {
+            chests.splice(i, 1);
+            continue;
+        }
+
         if (Math.hypot(player.x - c.x, player.y - c.y) < player.size + c.size) { 
             chests.splice(i, 1); 
             if (c.isEpic) { showEpicChestModal(); }
@@ -460,6 +468,16 @@ function update() {
         let e = enemies[ei]; 
         if (e.dead) { enemies.splice(ei, 1); continue; } 
         if (Math.hypot(player.x - e.x, player.y - e.y) > 2500) { enemies.splice(ei, 1); continue; } 
+        
+        // BLOCCA IL BOSS DENTRO L'ARENA
+        if (bossArena.active && e.type === 'miniboss') {
+            if (Math.hypot(e.x - bossArena.x, e.y - bossArena.y) > bossArena.radius - e.size) {
+                let pullA = Math.atan2(e.y - bossArena.y, e.x - bossArena.x);
+                e.x = bossArena.x + Math.cos(pullA) * (bossArena.radius - e.size);
+                e.y = bossArena.y + Math.sin(pullA) * (bossArena.radius - e.size);
+                if (e.state === 'dashing') { e.state = 'idle'; e.stateTimer = 0; }
+            }
+        }
         
         if (bossArena.active && e.type !== 'miniboss') {
             if (Math.hypot(e.x - bossArena.x, e.y - bossArena.y) < bossArena.radius + e.size) {
@@ -525,18 +543,6 @@ function update() {
         if (Math.hypot(player.x - e.x, player.y - e.y) < player.size + e.size) { 
             if (player.iFrames <= 0) { if (Math.random() < corazzaDodge) { showItemFeedback("SCHIVATA!", "#00ff00"); player.iFrames = 20; } else { damagePlayer(1); player.iFrames = 10; } }
         } 
-        
-        for (let bi = bullets.length - 1; bi >= 0; bi--) { 
-            let b = bullets[bi]; 
-            if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size + 35) { 
-                if (b.weaponId === 'granata') { explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20, type: 'fire'}); } 
-                else if (b.weaponId === 'freezer') { explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: 0, life: 180, maxLife: 180, type: 'ice'}); } 
-                else if (b.weaponId === 'cerbottana') { e.hp -= b.damage; e.hitTimer = 5; e.poisonTimer = 300; e.poisonDmg = b.poisonDmg + (b.level * 2); }
-                else { e.hp -= b.damage; e.hitTimer = 5; }
-                bullets.splice(bi, 1); 
-            } 
-        } 
-        if (e.hp <= 0 && !e.dead) { e.dead = true; handleEnemyDeath(e, ei); } 
     }
 
     for (let gi = gems.length - 1; gi >= 0; gi--) { 
@@ -544,10 +550,22 @@ function update() {
         let dist = Math.hypot(player.x - g.x, player.y - g.y); 
         if (dist < player.pickupRange) { let angle = Math.atan2(player.y - g.y, player.x - g.x); g.x += Math.cos(angle) * 10; g.y += Math.sin(angle) * 10; } 
         if (dist < player.size) { 
-            if (g.isCrystal) { totalCrystals++; sessionCrystals++; localStorage.setItem('survivorCrystals', totalCrystals); document.getElementById('crystal-count').innerText = sessionCrystals; showItemFeedback("+1 💎", "#bf00ff"); } 
-            else { xp += g.isSuper ? 3 : 1; document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%'; if (xp >= xpNeeded) levelUp(); }
+            if (g.isCrystal) { 
+                totalCrystals++; sessionCrystals++; 
+                localStorage.setItem('survivorCrystals', totalCrystals); 
+                document.getElementById('crystal-count').innerText = sessionCrystals; 
+                showItemFeedback("+1 💎", "#bf00ff"); 
+            } else { 
+                xp += g.isSuper ? 3 : 1; 
+            }
             gems.splice(gi, 1); 
         } 
+    }
+
+    // CHECK LEVEL UP
+    document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%';
+    if (xp >= xpNeeded && !paused) {
+        levelUp();
     }
 }
 
@@ -677,12 +695,9 @@ function draw() {
     player.weapons.forEach((w, index) => {
         let angle = 0;
         
-        // IL BASTONE VELENOSO STA VERTICALE E SI SBATTE A TERRA
         if (w.id === 'bastone_veleno') {
             angle = -Math.PI / 2; 
-            if (w.fireTimer < 20) {
-                angle = 0 - (Math.PI / 2) * (w.fireTimer / 20);
-            }
+            if (w.fireTimer < 20) { angle = 0 - (Math.PI / 2) * (w.fireTimer / 20); }
         } else {
             let targets = enemies.concat(rocks).filter(t => Math.hypot(t.x - player.x, t.y - player.y) <= w.range);
             if (targets.length > 0) { 
@@ -784,17 +799,40 @@ function buildUpgradePool() {
     return pool;
 }
 
-function levelUp() { paused = true; xp = xp - xpNeeded; xpNeeded = Math.floor(xpNeeded * 1.5); level++; document.getElementById('lvl').innerText = level; document.getElementById('xp-bar').style.width = (Math.max(0, xp) / xpNeeded * 100) + '%'; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Livello Superato!"; document.getElementById('levelup-title').style.color = "#00ffff"; document.getElementById('levelup-modal').style.display = 'block'; 
+function levelUp() { 
+    paused = true; 
+    xp -= xpNeeded; 
+    xpNeeded = Math.floor(xpNeeded * 1.15) + 15; 
+    level++; 
+    
+    document.getElementById('lvl').innerText = level; 
+    document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%'; 
+    
+    let pool = buildUpgradePool(); 
+    let shuffled = pool.sort(() => 0.5 - Math.random()); 
+    currentChoices = shuffled.slice(0, 3); 
+    
+    for(let i=0; i<3; i++) { 
+        let btn = document.getElementById('btn'+i); 
+        btn.innerHTML = currentChoices[i].name; 
+        btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; 
+    } 
+    document.getElementById('levelup-title').innerText = "Livello Superato!"; 
+    document.getElementById('levelup-title').style.color = "#00ffff"; 
+    document.getElementById('levelup-modal').style.display = 'block'; 
+    
     if (level % 5 === 0 && player.lastBossLevel !== level) { 
-        player.lastBossLevel = level; let bossHp = 5000 * (level / 5); let bossSpeed = 0.8 + (level * 0.02); 
+        player.lastBossLevel = level; 
+        let bossHp = 5000 * (level / 5); let bossSpeed = 0.8 + (level * 0.02); 
         enemies.push({ x: player.x, y: player.y - 600, hp: bossHp, maxHp: bossHp, speed: bossSpeed, originalSpeed: bossSpeed, size: 45, type: 'miniboss', color: 'gold', fireTimer: 0, hitTimer: 0, frozenTimer: 0, burnTimer: 0, poisonTimer: 0, dead: false, advanced: true, state: 'idle', stateTimer: 0, targetX: 0, targetY: 0, phaseMultiplier: Math.floor(level/5) }); 
         
         bossArena = { active: true, x: player.x, y: player.y, radius: 900 }; setTimeout(() => { showItemFeedback("⚠️ ARENA DEL TITANO! ⚠️", "#ff0000"); }, 500); 
     } 
 }
+
 function freeUpgrade() { paused = true; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Cassa: Scelta Gratuita!"; document.getElementById('levelup-title').style.color = "#ffff00"; document.getElementById('levelup-modal').style.display = 'block'; }
 
-function showEpicChestModal() { paused = true; let randomRelic = ["🤖 Mini Me", "🌀 Palle Rotanti", "🛡️ Scudo Rigenerativo"][Math.floor(Math.random()*3)]; let relicAction; if (randomRelic === "🤖 Mini Me") relicAction = () => { player.miniMes.push({x: player.x, y: player.y, fireTimer: 0, burstCount: 0}); closeEpicModal(); }; if (randomRelic === "🌀 Palle Rotanti") relicAction = () => { player.hasOrbs = true; closeEpicModal(); }; if (randomRelic === "🛡️ Scudo Rigenerativo") relicAction = () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeEpicModal(); }; let pool = [ { name: `<span class="upgrade-title" style="color:#bf00ff;">💎 20 Cristalli</span>`, apply: () => { totalCrystals+=20; sessionCrystals+=20; localStorage.setItem('survivorCrystals', totalCrystals); document.getElementById('crystal-count').innerText = sessionCrystals; closeEpicModal(); } }, { name: `<span class="upgrade-title" style="color:#00ffff;">🎁 ${randomRelic}</span>`, apply: relicAction }, { name: `<span class="upgrade-title" style="color:#00ff00;">❤️ Cura + ESP (2 Livelli)</span>`, apply: () => { player.hp = player.maxHp; updateBarsUI(); xp += xpNeeded + Math.floor(xpNeeded * 1.5); closeEpicModal(); } } ]; for(let i=0; i<3; i++) { let btn = document.getElementById('epic-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('epic-modal').style.display = 'block'; }
+function showEpicChestModal() { paused = true; let randomRelic = ["🤖 Mini Me", "🌀 Palle Rotanti", "🛡️ Scudo Rigenerativo"][Math.floor(Math.random()*3)]; let relicAction; if (randomRelic === "🤖 Mini Me") relicAction = () => { player.miniMes.push({x: player.x, y: player.y, fireTimer: 0, burstCount: 0}); closeEpicModal(); }; if (randomRelic === "🌀 Palle Rotanti") relicAction = () => { player.hasOrbs = true; closeEpicModal(); }; if (randomRelic === "🛡️ Scudo Rigenerativo") relicAction = () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeEpicModal(); }; let pool = [ { name: `<span class="upgrade-title" style="color:#bf00ff;">💎 20 Cristalli</span>`, apply: () => { totalCrystals+=20; sessionCrystals+=20; localStorage.setItem('survivorCrystals', totalCrystals); document.getElementById('crystal-count').innerText = sessionCrystals; closeEpicModal(); } }, { name: `<span class="upgrade-title" style="color:#00ffff;">🎁 ${randomRelic}</span>`, apply: relicAction }, { name: `<span class="upgrade-title" style="color:#00ff00;">❤️ Cura Totale & +XP</span>`, apply: () => { player.hp = player.maxHp; updateBarsUI(); xp += xpNeeded * 2; closeEpicModal(); } } ]; for(let i=0; i<3; i++) { let btn = document.getElementById('epic-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('epic-modal').style.display = 'block'; }
 function closeEpicModal() { document.getElementById('epic-modal').style.display = 'none'; paused = false; }
 
 function showBossRelicModal() { paused = true; let pool = [ { name: `<span class="upgrade-title">🌀 Palle Rotanti</span><span class="upgrade-desc">2 sfere lasciano una scia dannosa</span>`, apply: () => { player.hasOrbs = true; closeBossModal(); } }, { name: `<span class="upgrade-title">🛡️ Scudo Rigenerativo</span><span class="upgrade-desc">Assorbe danni e si ricarica da solo</span>`, apply: () => { player.maxShield += 50; player.shield = player.maxShield; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeBossModal(); } } ]; if (player.miniMes.length < 3) { pool.push({ name: `<span class="upgrade-title">🤖 Mini Me</span><span class="upgrade-desc">Un robottino immortale che spara a raffica</span>`, apply: () => { player.miniMes.push({x: player.x, y: player.y, fireTimer: 0, burstCount: 0}); closeBossModal(); } }); } else { pool.push({ name: `<span class="upgrade-title">❤️ Titanico</span><span class="upgrade-desc">Aumenta e cura tutti gli HP</span>`, apply: () => { player.maxHp += 100; player.hp = player.maxHp; updateBarsUI(); closeBossModal(); } }); } for(let i=0; i<3; i++) { let btn = document.getElementById('boss-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('boss-modal').style.display = 'block'; }
