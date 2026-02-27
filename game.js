@@ -43,13 +43,7 @@ const WEAPON_MODELS = {
     granata: (ctx, s, c) => { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(s/2, 0, s/1.2, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s/2, -s/1.2); ctx.lineTo(s/2 + s/2, -s*1.2); ctx.stroke(); },
     razzo: (ctx, s, c) => { ctx.fillStyle = "#445555"; ctx.fillRect(-s/2, -s/4, s*2, s/2); ctx.fillStyle = "#222222"; ctx.fillRect(-s/2, s/4, s/2, s/2); ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(s*1.5, -s/3); ctx.lineTo(s*2.2, 0); ctx.lineTo(s*1.5, s/3); ctx.fill(); },
     freezer: (ctx, s, c) => { ctx.fillStyle = "#eeeeee"; ctx.fillRect(0, -s/4, s*1.2, s/2); ctx.fillStyle = "#333333"; ctx.fillRect(0, s/4, s/2, s/1.5); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(-s/4, 0, s/1.5, 0, Math.PI*2); ctx.fill(); },
-    // BASTONE VELENOSO: Graficamente identico al bastone normale, ma verde.
-    bastone_veleno: (ctx, s, c) => { 
-        ctx.fillStyle = "#4a5d23"; ctx.fillRect(-s, -s/10, s*3.5, s/5); 
-        ctx.fillStyle = c; ctx.shadowBlur = 15; ctx.shadowColor = c; 
-        ctx.beginPath(); ctx.arc(s*2.5, 0, s/2.5, 0, Math.PI*2); ctx.fill(); 
-        ctx.shadowBlur = 0; ctx.strokeStyle = "#113311"; ctx.lineWidth = 3; ctx.stroke(); 
-    },
+    bastone_veleno: (ctx, s, c) => { ctx.fillStyle = "#4a5d23"; ctx.fillRect(-s, -s/10, s*3.5, s/5); ctx.fillStyle = c; ctx.shadowBlur = 15; ctx.shadowColor = c; ctx.beginPath(); ctx.arc(s*2.5, 0, s/2.5, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = "#113311"; ctx.lineWidth = 3; ctx.stroke(); },
     uzi: (ctx, s, c) => { ctx.fillStyle = "#555"; ctx.fillRect(0, -s/6, s*1.2, s/3); ctx.fillStyle = "#222"; ctx.fillRect(0, s/6, s/3, s/1.2); ctx.fillRect(s*0.8, s/6, s/4, s/2); },
     cerbottana: (ctx, s, c) => { ctx.fillStyle = "#8b5a2b"; ctx.fillRect(-s/2, -s/8, s*2.5, s/4); ctx.fillStyle = "#333"; ctx.fillRect(s*1.8, -s/6, s/4, s/3); }
 };
@@ -224,11 +218,12 @@ function update() {
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
     
+    // COLLISIONI MURI ARENA BOSS E SPAWN SASSI
     if (bossArena.active) {
         if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
         if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
         
-        if (frameCount % 90 === 0) { 
+        if (frameCount % 40 === 0) { 
             let angle = Math.random() * Math.PI * 2;
             let dist = Math.random() * (bossArena.radius - 80);
             rockTelegraphs.push({ x: bossArena.x + Math.cos(angle)*dist, y: bossArena.y + Math.sin(angle)*dist, radius: 30, timer: 60 }); 
@@ -335,7 +330,10 @@ function update() {
         }
 
         let outOfRange = Math.hypot(b.x - b.startX, b.y - b.startY) > b.range;
-        if (outOfRange) { 
+        // DISTRUGGI PROIETTILI SE TOCCANO IL MURO DELL'ARENA DEL BOSS
+        let hitArenaWall = bossArena.active && Math.hypot(b.x - bossArena.x, b.y - bossArena.y) + b.size > bossArena.radius;
+
+        if (outOfRange || hitArenaWall) { 
             if (b.weaponId === 'granata') explosions.push({x: b.x, y: b.y, radius: 60 + (b.level * 20), damage: b.damage, life: 20, maxLife: 20, type: 'fire'});
             else if (b.weaponId === 'freezer') explosions.push({x: b.x, y: b.y, radius: 45 + (b.level * 10), damage: 0, life: 180, maxLife: 180, type: 'ice'});
             bullets.splice(i, 1); continue; 
@@ -400,9 +398,13 @@ function update() {
     let elmoDodge = getEquipStat('elmo');
     for (let i = enemyBullets.length - 1; i >= 0; i--) { 
         let b = enemyBullets[i]; let oldX = b.x; let oldY = b.y; b.x += b.vx; b.y += b.vy; 
-        if (Math.hypot(b.x - player.x, b.y - player.y) > 1500) { enemyBullets.splice(i, 1); continue; } 
+        
+        let hitArenaWall = bossArena.active && Math.hypot(b.x - bossArena.x, b.y - bossArena.y) > bossArena.radius;
+        if (Math.hypot(b.x - player.x, b.y - player.y) > 1500 || hitArenaWall) { enemyBullets.splice(i, 1); continue; } 
+        
         let hitRock = false; for (let r of rocks) { if (distToSegment(r.x, r.y, oldX, oldY, b.x, b.y) < r.size) { hitRock = true; break; } } 
         if(hitRock) { enemyBullets.splice(i, 1); continue; } 
+        
         if (distToSegment(player.x, player.y, oldX, oldY, b.x, b.y) < player.size + 5) { 
             if (Math.random() < elmoDodge) { showItemFeedback("SCHIVATA!", "#00ffff"); } else { damagePlayer(b.damage); }
             enemyBullets.splice(i, 1); 
@@ -784,12 +786,10 @@ function buildUpgradePool() {
 
 function levelUp() { paused = true; xp = xp - xpNeeded; xpNeeded = Math.floor(xpNeeded * 1.5); level++; document.getElementById('lvl').innerText = level; document.getElementById('xp-bar').style.width = (Math.max(0, xp) / xpNeeded * 100) + '%'; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Livello Superato!"; document.getElementById('levelup-title').style.color = "#00ffff"; document.getElementById('levelup-modal').style.display = 'block'; 
     if (level % 5 === 0 && player.lastBossLevel !== level) { 
-        player.lastBossLevel = level; let bossHp = 2000 * (level / 5); let bossSpeed = 0.8 + (level * 0.02); 
-        let isAdvanced = level >= 10;
-        enemies.push({ x: player.x, y: player.y - 600, hp: bossHp, maxHp: bossHp, speed: bossSpeed, originalSpeed: bossSpeed, size: isAdvanced ? 45 : 35, type: 'miniboss', color: 'gold', fireTimer: 0, hitTimer: 0, frozenTimer: 0, burnTimer: 0, poisonTimer: 0, dead: false, advanced: isAdvanced, state: 'idle', stateTimer: 0, targetX: 0, targetY: 0, phaseMultiplier: Math.floor(level/5) - 1 }); 
+        player.lastBossLevel = level; let bossHp = 5000 * (level / 5); let bossSpeed = 0.8 + (level * 0.02); 
+        enemies.push({ x: player.x, y: player.y - 600, hp: bossHp, maxHp: bossHp, speed: bossSpeed, originalSpeed: bossSpeed, size: 45, type: 'miniboss', color: 'gold', fireTimer: 0, hitTimer: 0, frozenTimer: 0, burnTimer: 0, poisonTimer: 0, dead: false, advanced: true, state: 'idle', stateTimer: 0, targetX: 0, targetY: 0, phaseMultiplier: Math.floor(level/5) }); 
         
-        if (isAdvanced) { bossArena = { active: true, x: player.x, y: player.y, radius: 900 }; setTimeout(() => { showItemFeedback("⚠️ ARENA DEL TITANO! ⚠️", "#ff0000"); }, 500); } 
-        else { setTimeout(() => { showItemFeedback("⚠️ TITANO IN ARRIVO! ⚠️", "#ff0000"); }, 500); }
+        bossArena = { active: true, x: player.x, y: player.y, radius: 900 }; setTimeout(() => { showItemFeedback("⚠️ ARENA DEL TITANO! ⚠️", "#ff0000"); }, 500); 
     } 
 }
 function freeUpgrade() { paused = true; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Cassa: Scelta Gratuita!"; document.getElementById('levelup-title').style.color = "#ffff00"; document.getElementById('levelup-modal').style.display = 'block'; }
