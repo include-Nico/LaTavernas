@@ -103,15 +103,39 @@
         <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="surrender()"><span class="upgrade-title">Arrenditi</span></button>
     </div>
 
-    <div id="levelup-modal" class="modal"><h2 id="levelup-title" style="color: #00ffff; margin-top:0;">Livello Superato!</h2><p style="color:#aaa;">Scegli il tuo potenziamento:</p><button class="upgrade-btn" id="btn0"></button><button class="upgrade-btn" id="btn1"></button><button class="upgrade-btn" id="btn2"></button></div>
-    <div id="replace-modal" class="modal"><h2 style="color: #ff3300; margin-top:0;">Inventario Pieno!</h2><p>Scartare un'arma per prendere <br><span id="new-weapon-name" style="color:#00ffff; font-weight:bold; font-size:24px;"></span>?</p><button class="upgrade-btn" id="rep-btn0" onclick="confirmReplace(0)"></button><button class="upgrade-btn" id="rep-btn1" onclick="confirmReplace(1)"></button><button class="upgrade-btn" id="rep-btn2" onclick="confirmReplace(2)" style="display:none;"></button><button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="cancelReplace()"><span class="upgrade-title">Rifiuta Arma</span></button></div>
-    <div id="boss-modal" class="modal" style="border-color: #ffd700;"><h2 style="color: #ffd700; margin-top:0; text-shadow: 0 0 10px #ffd700;">CASSA DEL BOSS!</h2><p style="color:#ccc;">Scegli una Reliquia Suprema:</p><button class="upgrade-btn boss-btn" id="boss-btn0"></button><button class="upgrade-btn boss-btn" id="boss-btn1"></button><button class="upgrade-btn boss-btn" id="boss-btn2"></button></div>
-    <div id="epic-modal" class="modal" style="border-color: #ff00ff; box-shadow: 0 10px 40px rgba(255,0,255,0.4);"><h2 style="color: #ff00ff; margin-top:0; text-shadow: 0 0 10px #ff00ff;">✨ CASSA EPICA! ✨</h2><p style="color:#ccc;">Scegli la tua ricompensa segreta:</p><button class="upgrade-btn" id="epic-btn0" style="border-color: #ff00ff;"></button><button class="upgrade-btn" id="epic-btn1" style="border-color: #ff00ff;"></button><button class="upgrade-btn" id="epic-btn2" style="border-color: #ff00ff;"></button></div>
+    <div id="levelup-modal" class="modal">
+        <h2 id="levelup-title" style="color: #00ffff; margin-top:0;">Livello Superato!</h2>
+        <p style="color:#aaa;">Scegli il tuo potenziamento:</p>
+        <button class="upgrade-btn" id="btn0"></button>
+        <button class="upgrade-btn" id="btn1"></button>
+        <button class="upgrade-btn" id="btn2"></button>
+    </div>
 
-    
+    <div id="replace-modal" class="modal">
+        <h2 style="color: #ff3300; margin-top:0;">Inventario Pieno!</h2>
+        <p>Scartare un'arma per prendere <br><span id="new-weapon-name" style="color:#00ffff; font-weight:bold; font-size:24px;"></span>?</p>
+        <button class="upgrade-btn" id="rep-btn0" onclick="confirmReplace(0)"></button>
+        <button class="upgrade-btn" id="rep-btn1" onclick="confirmReplace(1)"></button>
+        <button class="upgrade-btn" id="rep-btn2" onclick="confirmReplace(2)" style="display:none;"></button>
+        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="cancelReplace()"><span class="upgrade-title">Rifiuta Arma</span></button>
+    </div>
+
+    <div id="boss-modal" class="modal" style="border-color: #ffd700;">
+        <h2 style="color: #ffd700; margin-top:0; text-shadow: 0 0 10px #ffd700;">CASSA DEL BOSS!</h2>
+        <p style="color:#ccc;">Scegli una Reliquia Suprema:</p>
+        <button class="upgrade-btn boss-btn" id="boss-btn0"></button>
+        <button class="upgrade-btn boss-btn" id="boss-btn1"></button>
+        <button class="upgrade-btn boss-btn" id="boss-btn2"></button>
+    </div>
+
+    <div id="epic-modal" class="modal" style="border-color: #ff00ff; box-shadow: 0 10px 40px rgba(255,0,255,0.4);">
+        <h2 style="color: #ff00ff; margin-top:0; text-shadow: 0 0 10px #ff00ff;">✨ CASSA EPICA! ✨</h2>
+        <p style="color:#ccc;">Scegli la tua ricompensa segreta:</p>
+        <button class="upgrade-btn" id="epic-btn0" style="border-color: #ff00ff;"></button>
+        <button class="upgrade-btn" id="epic-btn1" style="border-color: #ff00ff;"></button>
+        <button class="upgrade-btn" id="epic-btn2" style="border-color: #ff00ff;"></button>
+    </div>
+
     <script src="game.js"></script>
 </body>
 </html>
-
-
-
