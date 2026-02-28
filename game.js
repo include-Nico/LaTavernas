@@ -16,7 +16,7 @@ joyZone.addEventListener('touchmove', handleJoyMove, {passive: false});
 joyZone.addEventListener('touchend', handleJoyEnd);
 
 function handleJoyStart(e) { e.preventDefault(); let touch = e.touches[0]; joyStartX = touch.clientX; joyStartY = touch.clientY; joyBase.style.display = 'block'; joyBase.style.left = joyStartX + 'px'; joyBase.style.top = joyStartY + 'px'; isDraggingJoy = true; handleJoyMove(e); }
-function handleJoyMove(e) { if (!isDraggingJoy) return; e.preventDefault(); let touch = e.touches[0]; let dx = touch.clientX - joyStartX; let dy = touch.clientY - joyStartY; let dist = Math.hypot(dx, dy); if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; } joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; joyX = dx / maxJoyDist; joyY = dy / maxJoyDist; }
+function handleJoyMove(e) { if (!isDraggingJoy) return; e.preventDefault(); let touch = e.touches[0]; let dxTouch = touch.clientX - joyStartX; let dyTouch = touch.clientY - joyStartY; let dist = Math.hypot(dxTouch, dyTouch); if (dist > maxJoyDist) { dxTouch = (dxTouch / dist) * maxJoyDist; dyTouch = (dyTouch / dist) * maxJoyDist; } joyStick.style.transform = `translate(calc(-50% + ${dxTouch}px), calc(-50% + ${dyTouch}px))`; joyX = dxTouch / maxJoyDist; joyY = dyTouch / maxJoyDist; }
 function handleJoyEnd(e) { if(e.touches.length === 0) { isDraggingJoy = false; joyBase.style.display = 'none'; joyStick.style.transform = `translate(-50%, -50%)`; joyX = 0; joyY = 0; } }
 
 // --- FUNZIONI DI UTILITA' ---
@@ -69,7 +69,6 @@ function handleEnemyDeath(e, ei) {
     if (e.type === 'miniboss') { 
         gameStats.bossesKilled++; saveGameStats();
         dailyMissions.bossesKilled++; saveDailyMissions();
-
         chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true, isEpic: false, isBossChest: true }); 
         showItemFeedback("🏆 CASSA SUPREMA!", "gold"); 
         for(let c=0; c<15; c++) gems.push({ x: e.x + Math.random()*80-40, y: e.y + Math.random()*80-40, isCrystal: true }); 
@@ -79,8 +78,16 @@ function handleEnemyDeath(e, ei) {
     if (ei > -1) enemies.splice(ei, 1);
 }
 
-function gameLoop() { if (gameState !== "PLAYING") return; if (!paused) { update(); draw(); } requestAnimationFrame(gameLoop); }
-
+function drawProjectile(b, camX, camY) {
+    ctx.shadowBlur = 10; ctx.shadowColor = b.color; let px = b.x - camX; let py = b.y - camY;
+    if (b.weaponId === 'razzo') { let s = b.size; ctx.fillStyle = b.color; ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s/2, -s/2); ctx.lineTo(-s/2, s/2); ctx.fill(); ctx.restore(); } 
+    else if (b.weaponId === 'bastone') { ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(px, py, b.size, 0, Math.PI*2); ctx.fill(); } 
+    else if (b.weaponId === 'granata') { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(px, py, b.size, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py - b.size*0.8); ctx.lineTo(px + b.size, py - b.size*1.5); ctx.stroke(); } 
+    else if (b.weaponId === 'freezer') { let s = b.size; ctx.fillStyle = b.color; ctx.save(); ctx.translate(px, py); ctx.rotate(frameCount*0.1); ctx.beginPath(); let inner=s/3; let outer=s; for(let i=0;i<8;i++){let rad=(i%2===0)?outer:inner;let a=i*Math.PI/4;ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.fill(); ctx.restore(); } 
+    else if (b.weaponId === 'fucile' || b.weaponId === 'uzi' || b.weaponId === 'cerbottana') { ctx.strokeStyle = b.color; ctx.lineWidth = b.size; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - b.vx*1.5, py - b.vy*1.5); ctx.stroke(); } 
+    else { ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(px, py, b.size, 0, Math.PI*2); ctx.fill(); }
+    ctx.shadowBlur = 0;
+}
 function update() {
     frameCount++; let dx = 0; let dy = 0;
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
@@ -277,20 +284,26 @@ function update() {
         } 
     }
     
+    // Generazione Casse Base
     let normalChestsCount = chests.filter(c => !c.isSpecial && !c.isEpic).length;
-    if (Math.random() < 0.0015 && normalChestsCount < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false, isEpic: false }); }
+    if (Math.random() < 0.0015 && normalChestsCount < 3) { let angle = Math.random() * Math.PI * 2; let dist = 500 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; if(isPositionFree(cx, cy, 25)) chests.push({ x: cx, y: cy, size: 25, isSpecial: false, isEpic: false, isBossChest: false }); }
     
-    if (Math.random() < 0.0002) {
+    // Generazione Cassa Epica (MOLTO PIU RARA) con 12 rocce in cerchio perfetto
+    if (Math.random() < 0.00005) {
         let angle = Math.random() * Math.PI * 2; let dist = 800 + Math.random() * 1000; let cx = player.x + Math.cos(angle) * dist; let cy = player.y + Math.sin(angle) * dist; 
         if(isPositionFree(cx, cy, 150)) {
-            chests.push({ x: cx, y: cy, size: 50, isEpic: true, isSpecial: false }); 
-            for(let i=0; i<8; i++) { let ra = i * (Math.PI / 4); rocks.push({ x: cx + Math.cos(ra)*120, y: cy + Math.sin(ra)*120, size: 45, hp: 400, dead: false }); } 
+            chests.push({ x: cx, y: cy, size: 50, isEpic: true, isSpecial: false, isBossChest: false }); 
+            for(let i=0; i<12; i++) { 
+                let ra = i * (Math.PI * 2 / 12); 
+                rocks.push({ x: cx + Math.cos(ra)*120, y: cy + Math.sin(ra)*120, size: 35, hp: 400, dead: false }); 
+            } 
         }
     }
 
     for (let i = chests.length - 1; i >= 0; i--) { 
         let c = chests[i]; 
         
+        // DESPAWN CASSE LONTANE (tranne il Boss)
         if (!c.isBossChest && Math.hypot(player.x - c.x, player.y - c.y) > 3000) {
             chests.splice(i, 1);
             continue;
@@ -304,6 +317,7 @@ function update() {
                 let rand = Math.random(); 
                 if (rand < 0.4) { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); updateBarsUI(); showItemFeedback("✚ CURA", "#00ff00"); } 
                 else if (rand < 0.7) { 
+                    // BOMBA CORRETTA: Uccide i nemici!
                     let sd = Math.max(canvas.width, canvas.height); 
                     for(let k = enemies.length - 1; k >= 0; k--) {
                         let eTarget = enemies[k];
@@ -419,7 +433,7 @@ function update() {
             if (player.iFrames <= 0) { if (Math.random() < corazzaDodge) { showItemFeedback("SCHIVATA!", "#00ff00"); player.iFrames = 20; } else { damagePlayer(1); player.iFrames = 10; } }
         } 
         
-        // --- COLLISIONI PROIETTILI / NEMICI ---
+        // --- IL BLOCCO FONDAMENTALE DELLE COLLISIONI PROIETTILI - NEMICI ---
         for (let bi = bullets.length - 1; bi >= 0; bi--) { 
             let b = bullets[bi]; 
             if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size + 35) { 
@@ -557,7 +571,6 @@ function draw() {
     
     player.weapons.forEach((w, index) => {
         let angle = 0;
-        
         if (w.id === 'bastone_veleno') {
             angle = -Math.PI / 2; 
             if (w.fireTimer < 20) { angle = 0 - (Math.PI / 2) * (w.fireTimer / 20); }
@@ -632,6 +645,4 @@ function draw() {
     
     ctx.restore(); 
 }
-
-// Inizializza il menu al caricamento della pagina
-showMenu();
+function gameLoop() { if (gameState !== "PLAYING") return; if (!paused) { update(); draw(); } requestAnimationFrame(gameLoop); }
