@@ -5,14 +5,24 @@ window.addEventListener('resize', resize); resize();
 
 let gameState = "MENU"; 
 let paused = false; let frameCount = 0;
-let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
 let cheatUnlocked = localStorage.getItem('survivorCheat') === 'true'; 
 let totalCrystals = parseInt(localStorage.getItem('survivorCrystals')) || 0;
 let unlockedEquip = JSON.parse(localStorage.getItem('survivorUnlockedEquip')) || [];
 let equippedItems = JSON.parse(localStorage.getItem('survivorEquipped')) || { elmo: null, corazza: null, amuleto1: null, amuleto2: null };
 let hasDoubleAmulet = localStorage.getItem('survivorDoubleAmulet') === 'true';
-
 let charLevels = JSON.parse(localStorage.getItem('survivorCharLevels')) || { 0:1, 1:1, 2:1 };
+
+// --- STATISTICHE GENERALI ---
+let gameStats = JSON.parse(localStorage.getItem('survivorGameStats')) || { enemiesKilled: 0, bossesKilled: 0, maxLevelReached: 1, crystalsSpent: 0 };
+let maxLevelReached = gameStats.maxLevelReached; 
+
+// --- MISSIONI GIORNALIERE ---
+let todayStr = new Date().toDateString();
+let dailyMissions = JSON.parse(localStorage.getItem('survivorDaily')) || { date: '', bossesKilled: 0, levelsGained: 0, itemsBought: 0, claim1: false, claim2: false, claim3: false };
+if (dailyMissions.date !== todayStr) {
+    dailyMissions = { date: todayStr, bossesKilled: 0, levelsGained: 0, itemsBought: 0, claim1: false, claim2: false, claim3: false };
+    localStorage.setItem('survivorDaily', JSON.stringify(dailyMissions));
+}
 
 let selectedCharId = 0; 
 let savedName = localStorage.getItem('survivorPlayerName') || ""; let activePlayerName = "Eroe";
@@ -73,9 +83,99 @@ const EQUIP_DB = {
     amuleto: [ { id: 'amu_ice', name: 'Amuleto Ghiaccio', desc: 'Scia congelante (3s)', price: 1000, icon: '❄️' }, { id: 'amu_fire', name: 'Amuleto Fuoco', desc: 'Scia incendiaria (3s)', price: 1000, icon: '🔥' }, { id: 'amu_revive', name: 'Amuleto Fenice', desc: 'Rinasci 1 volta (50% HP)', price: 2000, icon: '❤️‍🔥' } ]
 };
 
+let player = {};
+let enemies = []; let bullets = []; let beams = []; let explosions = []; let elementalTrails = []; let enemyBullets = []; let gems = []; let rocks = []; let chests = [];
+let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendingWeapon = null; let sessionCrystals = 0;
+
+function saveGameStats() { localStorage.setItem('survivorGameStats', JSON.stringify(gameStats)); }
+function saveDailyMissions() { localStorage.setItem('survivorDaily', JSON.stringify(dailyMissions)); updateMissionBadge(); }
+
+function checkDailyMissionsStatus() {
+    let hasUnclaimed = false;
+    if (dailyMissions.bossesKilled >= 5 && !dailyMissions.claim1) hasUnclaimed = true;
+    if (dailyMissions.levelsGained >= 10 && !dailyMissions.claim2) hasUnclaimed = true;
+    if (dailyMissions.itemsBought >= 1 && !dailyMissions.claim3) hasUnclaimed = true;
+    return hasUnclaimed;
+}
+
+function updateMissionBadge() {
+    let badge = document.getElementById('mission-badge');
+    if(checkDailyMissionsStatus()) { badge.style.display = 'block'; } else { badge.style.display = 'none'; }
+}
+
+function showMissionsModal() {
+    let container = document.getElementById('missions-container');
+    container.innerHTML = '';
+
+    let m1Prog = Math.min(dailyMissions.bossesKilled, 5); let m1Done = m1Prog >= 5;
+    container.innerHTML += `
+        <div class="mission-card">
+            <p class="mission-title">💀 Uccidi 5 Boss</p>
+            <p class="mission-reward">Premio: 100 💎</p>
+            <div class="mission-progress-bg"><div class="mission-progress-fill" style="width: ${(m1Prog/5)*100}%;"></div></div>
+            <p style="font-size:12px; margin-top:0; text-align:right;">${m1Prog}/5</p>
+            ${dailyMissions.claim1 ? '<button class="btn-claim" disabled>Completata ✅</button>' : `<button class="btn-claim" ${m1Done ? '' : 'disabled'} onclick="claimMission(1, 100)">Riscuoti</button>`}
+        </div>
+    `;
+
+    let m2Prog = Math.min(dailyMissions.levelsGained, 10); let m2Done = m2Prog >= 10;
+    container.innerHTML += `
+        <div class="mission-card">
+            <p class="mission-title">⬆️ Guadagna 10 Livelli</p>
+            <p class="mission-reward">Premio: 20 💎</p>
+            <div class="mission-progress-bg"><div class="mission-progress-fill" style="width: ${(m2Prog/10)*100}%;"></div></div>
+            <p style="font-size:12px; margin-top:0; text-align:right;">${m2Prog}/10</p>
+            ${dailyMissions.claim2 ? '<button class="btn-claim" disabled>Completata ✅</button>' : `<button class="btn-claim" ${m2Done ? '' : 'disabled'} onclick="claimMission(2, 20)">Riscuoti</button>`}
+        </div>
+    `;
+
+    let m3Prog = Math.min(dailyMissions.itemsBought, 1); let m3Done = m3Prog >= 1;
+    container.innerHTML += `
+        <div class="mission-card">
+            <p class="mission-title">🎒 Acquista 1 Oggetto</p>
+            <p class="mission-reward">Premio: 50 💎</p>
+            <div class="mission-progress-bg"><div class="mission-progress-fill" style="width: ${(m3Prog/1)*100}%;"></div></div>
+            <p style="font-size:12px; margin-top:0; text-align:right;">${m3Prog}/1</p>
+            ${dailyMissions.claim3 ? '<button class="btn-claim" disabled>Completata ✅</button>' : `<button class="btn-claim" ${m3Done ? '' : 'disabled'} onclick="claimMission(3, 50)">Riscuoti</button>`}
+        </div>
+    `;
+
+    document.getElementById('missions-modal').style.display = 'block';
+}
+
+function closeMissionsModal() { document.getElementById('missions-modal').style.display = 'none'; }
+
+function claimMission(id, reward) {
+    if (id === 1) dailyMissions.claim1 = true;
+    if (id === 2) dailyMissions.claim2 = true;
+    if (id === 3) dailyMissions.claim3 = true;
+    totalCrystals += reward;
+    localStorage.setItem('survivorCrystals', totalCrystals);
+    saveDailyMissions();
+    showMissionsModal(); 
+    alert(`Hai ricevuto ${reward} Cristalli! 💎`);
+}
+
 function savePlayerName() { let inputVal = document.getElementById('player-name-input').value.trim(); localStorage.setItem('survivorPlayerName', inputVal); savedName = inputVal; }
-function showSettings() { document.getElementById('settings-modal').style.display = 'block'; }
-function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+
+function showSettingsModal() { 
+    document.getElementById('stat-enemies').innerText = gameStats.enemiesKilled;
+    document.getElementById('stat-bosses').innerText = gameStats.bossesKilled;
+    document.getElementById('stat-maxlevel').innerText = gameStats.maxLevelReached;
+    document.getElementById('stat-spent').innerText = gameStats.crystalsSpent;
+    document.getElementById('settings-modal').style.display = 'block'; 
+}
+function closeSettingsModal() { document.getElementById('settings-modal').style.display = 'none'; }
+
+function switchSettingsTab(tabName) {
+    document.getElementById('tab-btn-cheat').classList.remove('active');
+    document.getElementById('tab-btn-stats').classList.remove('active');
+    document.getElementById('tab-content-cheat').style.display = 'none';
+    document.getElementById('tab-content-stats').style.display = 'none';
+
+    document.getElementById('tab-btn-' + tabName).classList.add('active');
+    document.getElementById('tab-content-' + tabName).style.display = 'block';
+}
 
 function checkCheatCode() {
     let input = document.getElementById('cheat-input').value.trim().toLowerCase(); 
@@ -85,12 +185,11 @@ function checkCheatCode() {
         localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip));
         charLevels = {0:3, 1:3, 2:3}; localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels));
         alert("✔️ CODICE ACCETTATO!\nTutti i personaggi (Lv.3) e gli equipaggiamenti sono sbloccati per sempre."); 
-        closeSettings(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
+        closeSettingsModal(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
     } else if (input === "tesoro") {
         totalCrystals += 1000; localStorage.setItem('survivorCrystals', totalCrystals);
-        alert("💎 +1000 CRISTALLI!\nHai ricevuto una fornitura di cristalli."); closeSettings(); 
+        alert("💎 +1000 CRISTALLI!\nHai ricevuto una fornitura di cristalli."); closeSettingsModal(); 
         if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI();
-        document.getElementById('menu-crystal-count').innerText = totalCrystals;
     } else if (input === "azzera") {
         localStorage.clear(); alert("🔄 PROGRESSI RESETTATI!\nIl gioco si riavvierà."); location.reload(); 
     } else { alert("❌ Codice errato."); } 
@@ -116,8 +215,24 @@ function updateEquipMenuUI() {
         }); container.appendChild(row);
     });
 }
-function buyDoubleAmulet() { if (totalCrystals >= 3000) { totalCrystals -= 3000; hasDoubleAmulet = true; localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorDoubleAmulet', 'true'); updateEquipMenuUI(); } }
-function buyEquip(id, price) { if (totalCrystals >= price) { totalCrystals -= price; unlockedEquip.push(id); localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip)); updateEquipMenuUI(); } }
+
+function buyDoubleAmulet() { 
+    if (totalCrystals >= 3000) { 
+        totalCrystals -= 3000; hasDoubleAmulet = true; 
+        gameStats.crystalsSpent += 3000; saveGameStats();
+        dailyMissions.itemsBought++; saveDailyMissions();
+        localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorDoubleAmulet', 'true'); updateEquipMenuUI(); 
+    } 
+}
+function buyEquip(id, price) { 
+    if (totalCrystals >= price) { 
+        totalCrystals -= price; unlockedEquip.push(id); 
+        gameStats.crystalsSpent += price; saveGameStats();
+        dailyMissions.itemsBought++; saveDailyMissions();
+        localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip)); updateEquipMenuUI(); 
+    } 
+}
+
 function equipItem(category, id) { 
     if (category === 'amuleto') { if (!hasDoubleAmulet) { equippedItems.amuleto1 = id; equippedItems.amuleto2 = null; } else { if (!equippedItems.amuleto1) equippedItems.amuleto1 = id; else if (!equippedItems.amuleto2 && equippedItems.amuleto1 !== id) equippedItems.amuleto2 = id; else equippedItems.amuleto1 = id; } } else { equippedItems[category] = id; }
     localStorage.setItem('survivorEquipped', JSON.stringify(equippedItems)); updateEquipMenuUI(); 
@@ -138,11 +253,15 @@ function togglePause() {
 }
 function surrender() { document.getElementById('pause-modal').style.display = 'none'; player.hp = 0; updateBarsUI(); triggerGameOver(); }
 
-function showMenu() { gameState = "MENU"; document.getElementById('main-menu').style.display = 'flex'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'none'; document.getElementById('equipment-select').style.display = 'none'; canvas.style.display = 'none'; document.getElementById('player-name-input').value = savedName; }
+function showMenu() { updateMissionBadge(); gameState = "MENU"; document.getElementById('main-menu').style.display = 'flex'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'none'; document.getElementById('equipment-select').style.display = 'none'; canvas.style.display = 'none'; document.getElementById('player-name-input').value = savedName; }
 function backToMenu() { showMenu(); }
 
 function upgradeChar(id) {
-    if (charLevels[id] < 3 && totalCrystals >= 1000) { totalCrystals -= 1000; charLevels[id]++; localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels)); showCharacterSelect(); }
+    if (charLevels[id] < 3 && totalCrystals >= 1000) { 
+        totalCrystals -= 1000; charLevels[id]++; 
+        gameStats.crystalsSpent += 1000; saveGameStats();
+        localStorage.setItem('survivorCrystals', totalCrystals); localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels)); showCharacterSelect(); 
+    }
 }
 
 function showCharacterSelect() {
@@ -161,7 +280,6 @@ function showCharacterSelect() {
         if (isUnlocked) { card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); }; } container.appendChild(card);
     });
 }
-
 function startGame() {
     gameState = "PLAYING"; savePlayerName(); activePlayerName = savedName !== "" ? savedName : "Eroe"; sessionCrystals = 0; document.getElementById('crystal-count').innerText = 0;
     
@@ -183,7 +301,12 @@ function startGame() {
     giveWeapon(WEAPONS_DB.pistola); updateBarsUI(); document.getElementById('lvl').innerText = level; document.getElementById('shield-ui').style.display = 'none'; requestAnimationFrame(gameLoop);
 }
 
-function triggerGameOver() { paused = true; gameState = "GAMEOVER"; if (level > maxLevelReached) { maxLevelReached = level; localStorage.setItem('survivorMaxLevel', maxLevelReached); } document.getElementById('run-crystals').innerText = sessionCrystals; document.getElementById('final-level').innerText = level; document.getElementById('game-ui').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'flex'; }
+function triggerGameOver() { 
+    paused = true; gameState = "GAMEOVER"; 
+    saveGameStats();
+    saveDailyMissions();
+    document.getElementById('run-crystals').innerText = sessionCrystals; document.getElementById('final-level').innerText = level; document.getElementById('game-ui').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'flex'; 
+}
 
 joyZone.addEventListener('touchstart', handleJoyStart, {passive: false}); joyZone.addEventListener('touchmove', handleJoyMove, {passive: false}); joyZone.addEventListener('touchend', handleJoyEnd);
 function handleJoyStart(e) { e.preventDefault(); let touch = e.touches[0]; joyStartX = touch.clientX; joyStartY = touch.clientY; joyBase.style.display = 'block'; joyBase.style.left = joyStartX + 'px'; joyBase.style.top = joyStartY + 'px'; isDraggingJoy = true; handleJoyMove(e); }
@@ -198,7 +321,8 @@ function damagePlayer(amount) {
     if (player.shield > 0) { player.shield -= amount; if (player.shield < 0) { player.hp += player.shield; player.shield = 0; } } else { player.hp -= amount; } 
     if(player.hp <= 0 && hasAmulet('amu_revive') && !player.hasRevived) {
         player.hp = player.maxHp * 0.5; player.hasRevived = true; showItemFeedback("🔥 FENICE!", "#ff4500");
-        enemies.forEach(e => { if(Math.hypot(e.x-player.x, e.y-player.y) < 500) e.hp -= 2000; }); document.getElementById('amulet-icon-ui').style.opacity = '0.3';
+        enemies.forEach(e => { if(Math.hypot(e.x-player.x, e.y-player.y) < 500) { e.hp -= 2000; if(e.hp<=0 && !e.dead) { e.dead=true; handleEnemyDeath(e, -1); } } }); 
+        document.getElementById('amulet-icon-ui').style.opacity = '0.3';
     } else if (player.hp <= 0) { triggerGameOver(); }
     updateBarsUI(); 
 }
@@ -214,7 +338,6 @@ function update() {
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
     
-    // COLLISIONI MURI ARENA BOSS E SPAWN SASSI
     if (bossArena.active) {
         if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
         if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
@@ -240,7 +363,7 @@ function update() {
     if (player.maxShield > 0) { player.lastHitTimer++; if (player.lastHitTimer > 180 && player.shield < player.maxShield) { player.shield = Math.min(player.maxShield, player.shield + 0.3); updateBarsUI(); } }
     if (player.iFrames > 0) player.iFrames--;
 
-    if (player.hasOrbs) { player.orbAngle += 0.05; let orbDist = 100; let o1x = player.x + Math.cos(player.orbAngle)*orbDist; let o1y = player.y + Math.sin(player.orbAngle)*orbDist; let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*orbDist; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*orbDist; if (frameCount % 4 === 0) { player.orbTrail.push({x: o1x, y: o1y, life: 60}); player.orbTrail.push({x: o2x, y: o2y, life: 60}); } player.orbTrail.forEach(t => { t.life--; enemies.forEach(e => { if (Math.hypot(e.x - t.x, e.y - t.y) < e.size + 10) { e.hp -= 0.6; e.hitTimer = 5; } }); }); player.orbTrail = player.orbTrail.filter(t => t.life > 0); }
+    if (player.hasOrbs) { player.orbAngle += 0.05; let orbDist = 100; let o1x = player.x + Math.cos(player.orbAngle)*orbDist; let o1y = player.y + Math.sin(player.orbAngle)*orbDist; let o2x = player.x + Math.cos(player.orbAngle + Math.PI)*orbDist; let o2y = player.y + Math.sin(player.orbAngle + Math.PI)*orbDist; if (frameCount % 4 === 0) { player.orbTrail.push({x: o1x, y: o1y, life: 60}); player.orbTrail.push({x: o2x, y: o2y, life: 60}); } player.orbTrail.forEach(t => { t.life--; enemies.forEach(e => { if (Math.hypot(e.x - t.x, e.y - t.y) < e.size + 10) { e.hp -= 0.6; e.hitTimer = 5; if(e.hp<=0 && !e.dead) { e.dead=true; handleEnemyDeath(e, -1); } } }); }); player.orbTrail = player.orbTrail.filter(t => t.life > 0); }
 
     player.miniMes.forEach((m, index) => { 
         let targetAngle = (index * Math.PI * 2) / Math.max(1, player.miniMes.length) + (frameCount * 0.02); 
@@ -547,7 +670,7 @@ function update() {
             if (player.iFrames <= 0) { if (Math.random() < corazzaDodge) { showItemFeedback("SCHIVATA!", "#00ff00"); player.iFrames = 20; } else { damagePlayer(1); player.iFrames = 10; } }
         } 
         
-        // --- IL BLOCCO FONDAMENTALE CHE MANCAVA ---
+        // --- COLLISIONI PROIETTILI / NEMICI ---
         for (let bi = bullets.length - 1; bi >= 0; bi--) { 
             let b = bullets[bi]; 
             if (distToSegment(e.x, e.y, b.x - b.vx, b.y - b.vy, b.x, b.y) < e.size + b.size + 35) { 
@@ -559,7 +682,6 @@ function update() {
             } 
         } 
         if (e.hp <= 0 && !e.dead) { e.dead = true; handleEnemyDeath(e, ei); } 
-        // ------------------------------------------
     }
 
     for (let gi = gems.length - 1; gi >= 0; gi--) { 
@@ -582,8 +704,16 @@ function update() {
     document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%';
     if (xp >= xpNeeded && !paused) { levelUp(); }
 }
+
 function handleEnemyDeath(e, ei) {
+    // --- GESTIONE STATISTICHE MISSIONI ---
+    gameStats.enemiesKilled++; 
+    if (gameStats.enemiesKilled % 50 === 0) saveGameStats();
+
     if (e.type === 'miniboss') { 
+        gameStats.bossesKilled++; saveGameStats();
+        dailyMissions.bossesKilled++; saveDailyMissions();
+
         chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true, isEpic: false, isBossChest: true }); 
         showItemFeedback("🏆 CASSA SUPREMA!", "gold"); 
         for(let c=0; c<15; c++) gems.push({ x: e.x + Math.random()*80-40, y: e.y + Math.random()*80-40, isCrystal: true }); 
@@ -707,8 +837,6 @@ function draw() {
     
     player.weapons.forEach((w, index) => {
         let angle = 0;
-        
-        // BASTONE VELENOSO
         if (w.id === 'bastone_veleno') {
             angle = -Math.PI / 2; 
             if (w.fireTimer < 20) { angle = 0 - (Math.PI / 2) * (w.fireTimer / 20); }
@@ -818,6 +946,13 @@ function levelUp() {
     xp -= xpNeeded; 
     xpNeeded = Math.floor(xpNeeded * 1.15) + 15; 
     level++; 
+    
+    // --- GESTIONE MISSIONI E STATISTICHE LIVELLO ---
+    dailyMissions.levelsGained++; saveDailyMissions();
+    if (level > gameStats.maxLevelReached) {
+        gameStats.maxLevelReached = level; maxLevelReached = level; saveGameStats();
+        localStorage.setItem('survivorMaxLevel', maxLevelReached);
+    }
     
     document.getElementById('lvl').innerText = level; 
     document.getElementById('xp-bar').style.width = Math.min((xp / xpNeeded * 100), 100) + '%'; 
