@@ -3,7 +3,7 @@ const ctx = canvas.getContext('2d');
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize); resize();
 
-// --- SALVATAGGI E MEMORIA ---
+// --- SALVATAGGI E MEMORIA (ANTIPROIETTILE) ---
 let gameState = "MENU"; let paused = false; let frameCount = 0;
 let cheatUnlocked = localStorage.getItem('survivorCheat') === 'true'; 
 let totalCrystals = parseInt(localStorage.getItem('survivorCrystals')) || 0;
@@ -12,16 +12,25 @@ let equippedItems = JSON.parse(localStorage.getItem('survivorEquipped')) || { el
 let hasDoubleAmulet = localStorage.getItem('survivorDoubleAmulet') === 'true';
 let charLevels = JSON.parse(localStorage.getItem('survivorCharLevels')) || { 0:1, 1:1, 2:1 };
 
-let gameStats = JSON.parse(localStorage.getItem('survivorGameStats')) || { enemiesKilled: 0, bossesKilled: 0, maxLevelReached: 1, crystalsSpent: 0 };
+let gsSaved = JSON.parse(localStorage.getItem('survivorGameStats'));
+let gameStats = gsSaved ? gsSaved : { enemiesKilled: 0, bossesKilled: 0, maxLevelReached: 1, crystalsSpent: 0 };
+if(gameStats.enemiesKilled === undefined) gameStats.enemiesKilled = 0;
+if(gameStats.bossesKilled === undefined) gameStats.bossesKilled = 0;
+if(gameStats.maxLevelReached === undefined) gameStats.maxLevelReached = 1;
+if(gameStats.crystalsSpent === undefined) gameStats.crystalsSpent = 0;
+
 let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
 maxLevelReached = Math.max(maxLevelReached, gameStats.maxLevelReached);
 
 let todayStr = new Date().toDateString();
-let dailyMissions = JSON.parse(localStorage.getItem('survivorDaily')) || { date: '', bossesKilled: 0, levelsGained: 0, itemsBought: 0, claim1: false, claim2: false, claim3: false };
+let dmSaved = JSON.parse(localStorage.getItem('survivorDaily'));
+let dailyMissions = dmSaved ? dmSaved : { date: todayStr, bossesKilled: 0, levelsGained: 0, itemsBought: 0, claim1: false, claim2: false, claim3: false };
 if (dailyMissions.date !== todayStr) { dailyMissions = { date: todayStr, bossesKilled: 0, levelsGained: 0, itemsBought: 0, claim1: false, claim2: false, claim3: false }; localStorage.setItem('survivorDaily', JSON.stringify(dailyMissions)); }
 
-// PASS BATTAGLIA SETTIMANALE
-let battlePass = JSON.parse(localStorage.getItem('survivorBattlePass')) || { weekStart: Date.now(), bosses: 0, claims: { 15: false, 30: false, 50: false, 100: false, 150: false } };
+let bpSaved = JSON.parse(localStorage.getItem('survivorBattlePass'));
+let battlePass = bpSaved ? bpSaved : { weekStart: Date.now(), bosses: 0, claims: { 15: false, 30: false, 50: false, 100: false, 150: false } };
+if(!battlePass.claims) battlePass.claims = { 15: false, 30: false, 50: false, 100: false, 150: false };
+if(!battlePass.bosses) battlePass.bosses = 0;
 if (Date.now() - battlePass.weekStart > 604800000) { battlePass = { weekStart: Date.now(), bosses: 0, claims: { 15: false, 30: false, 50: false, 100: false, 150: false } }; localStorage.setItem('survivorBattlePass', JSON.stringify(battlePass)); }
 
 let selectedCharId = 0; let savedName = localStorage.getItem('survivorPlayerName') || ""; let activePlayerName = "Eroe";
@@ -38,18 +47,10 @@ let joyX = 0, joyY = 0; let isDraggingJoy = false; let joyStartX = 0, joyStartY 
 const joyZone = document.getElementById('joystick-zone'); const joyBase = document.getElementById('joystick-base'); const joyStick = document.getElementById('joystick-stick');
 let keys = {}; 
 
-window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
-window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-joyZone.addEventListener('touchstart', handleJoyStart, {passive: false}); joyZone.addEventListener('touchmove', handleJoyMove, {passive: false}); joyZone.addEventListener('touchend', handleJoyEnd);
-
-function handleJoyStart(e) { e.preventDefault(); let touch = e.touches[0]; joyStartX = touch.clientX; joyStartY = touch.clientY; joyBase.style.display = 'block'; joyBase.style.left = joyStartX + 'px'; joyBase.style.top = joyStartY + 'px'; isDraggingJoy = true; handleJoyMove(e); }
-function handleJoyMove(e) { if (!isDraggingJoy) return; e.preventDefault(); let touch = e.touches[0]; let dx = touch.clientX - joyStartX; let dy = touch.clientY - joyStartY; let dist = Math.hypot(dx, dy); if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; } joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; joyX = dx / maxJoyDist; joyY = dy / maxJoyDist; }
-function handleJoyEnd(e) { if(e.touches.length === 0) { isDraggingJoy = false; joyBase.style.display = 'none'; joyStick.style.transform = `translate(-50%, -50%)`; joyX = 0; joyY = 0; } }
-
 function distToSegment(px, py, x1, y1, x2, y2) { let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); if (l2 === 0) return Math.hypot(px - x1, py - y1); let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))); }
 function isPositionFree(x, y, radius) { for (let r of rocks) { if (Math.hypot(x - r.x, y - r.y) < radius + r.size + 10) return false; } return true; }
 
-// --- DATABASE ---
+// --- DATABASE ARMI E ASSET ---
 const WEAPON_MODELS = {
     pistola: (ctx, s, c) => { ctx.fillStyle = "#bbbbbb"; ctx.fillRect(0, -s/4, s*1.5, s/2); ctx.fillStyle = "#444444"; ctx.fillRect(0, s/4, s/2, s/1.5); },
     fucile: (ctx, s, c) => { ctx.fillStyle = "#333333"; ctx.fillRect(0, -s/6, s*2, s/3); ctx.fillStyle = "#111111"; ctx.fillRect(s, -s/2, s/4, s/3); ctx.fillStyle = "#5c3a21"; ctx.fillRect(-s/2, s/6, s, s/2.5); },
@@ -87,29 +88,34 @@ const EQUIP_DB = {
     corazza: [ { id: 'cor_1', name: 'Corazza Comune', desc: '15% Schivata Mischia', price: 100, value: 0.15, icon: '👕' }, { id: 'cor_2', name: 'Corazza Rara', desc: '30% Schivata Mischia', price: 300, value: 0.30, icon: '🦺' }, { id: 'cor_3', name: 'Corazza Epica', desc: '50% Schivata Mischia', price: 600, value: 0.50, icon: '🛡️' } ],
     amuleto: [ { id: 'amu_ice', name: 'Amuleto Ghiaccio', desc: 'Scia congelante (3s)', price: 1000, icon: '❄️' }, { id: 'amu_fire', name: 'Amuleto Fuoco', desc: 'Scia incendiaria (3s)', price: 1000, icon: '🔥' }, { id: 'amu_revive', name: 'Amuleto Fenice', desc: 'Rinasci 1 volta (50% HP)', price: 2000, icon: '❤️‍🔥' } ]
 };
-// --- AGGIORNAMENTO BADGE NOTIFICHE ---
-function updateBadges() {
-    let missionBadge = document.getElementById('mission-badge');
-    let bpBadge = document.getElementById('bp-badge');
-    
-    let hasMission = (!dailyMissions.claim1 && dailyMissions.bossesKilled >= 5) || (!dailyMissions.claim2 && dailyMissions.levelsGained >= 10) || (!dailyMissions.claim3 && dailyMissions.itemsBought >= 1);
-    if(missionBadge) missionBadge.style.display = hasMission ? 'block' : 'none';
 
-    let hasBp = (!battlePass.claims[15] && battlePass.bosses >= 15) || (!battlePass.claims[30] && battlePass.bosses >= 30) || (!battlePass.claims[50] && battlePass.bosses >= 50) || (!battlePass.claims[100] && battlePass.bosses >= 100) || (!battlePass.claims[150] && battlePass.bosses >= 150);
-    if(bpBadge) bpBadge.style.display = hasBp ? 'block' : 'none';
-}
-
+// --- FUNZIONI UI, STATISTICHE E MENU ---
 function saveGameStats() { localStorage.setItem('survivorGameStats', JSON.stringify(gameStats)); }
 function saveDailyMissions() { localStorage.setItem('survivorDaily', JSON.stringify(dailyMissions)); updateBadges(); }
 function saveBattlePass() { localStorage.setItem('survivorBattlePass', JSON.stringify(battlePass)); updateBadges(); }
 
-// --- PASS BATTAGLIA SETTIMANALE ---
+function updateBadges() {
+    let missionBadge = document.getElementById('mission-badge');
+    let bpBadge = document.getElementById('bp-badge');
+    let hasMission = (!dailyMissions.claim1 && dailyMissions.bossesKilled >= 5) || (!dailyMissions.claim2 && dailyMissions.levelsGained >= 10) || (!dailyMissions.claim3 && dailyMissions.itemsBought >= 1);
+    if(missionBadge) missionBadge.style.display = hasMission ? 'block' : 'none';
+    let hasBp = (!battlePass.claims[15] && battlePass.bosses >= 15) || (!battlePass.claims[30] && battlePass.bosses >= 30) || (!battlePass.claims[50] && battlePass.bosses >= 50) || (!battlePass.claims[100] && battlePass.bosses >= 100) || (!battlePass.claims[150] && battlePass.bosses >= 150);
+    if(bpBadge) bpBadge.style.display = hasBp ? 'block' : 'none';
+}
+
+function closeAllMenuModals() {
+    document.getElementById('settings-modal').style.display = 'none';
+    document.getElementById('missions-modal').style.display = 'none';
+    document.getElementById('battlepass-modal').style.display = 'none';
+}
+
+// PASS BATTAGLIA
 function showBattlePassModal() {
+    closeAllMenuModals();
     let container = document.getElementById('bp-tiers-container');
     document.getElementById('bp-bosses-count').innerText = battlePass.bosses;
     document.getElementById('bp-progress-fill').style.width = Math.min((battlePass.bosses / 150) * 100, 100) + '%';
     container.innerHTML = '';
-    
     const tiers = [ { req: 15, rew: 200 }, { req: 30, rew: 400 }, { req: 50, rew: 600 }, { req: 100, rew: 800 }, { req: 150, rew: 1000 } ];
     tiers.forEach(t => {
         let isUnlocked = battlePass.bosses >= t.req; let isClaimed = battlePass.claims[t.req];
@@ -121,8 +127,9 @@ function showBattlePassModal() {
 function closeBattlePassModal() { document.getElementById('battlepass-modal').style.display = 'none'; }
 function claimBattlePass(req, reward) { battlePass.claims[req] = true; totalCrystals += reward; localStorage.setItem('survivorCrystals', totalCrystals); saveBattlePass(); showBattlePassModal(); alert(`Hai ricevuto ${reward} Cristalli dal Pass! 💎`); }
 
-// --- MISSIONI GIORNALIERE ---
+// MISSIONI
 function showMissionsModal() {
+    closeAllMenuModals();
     let container = document.getElementById('missions-container'); container.innerHTML = '';
     let m1Prog = Math.min(dailyMissions.bossesKilled, 5); let m1Done = m1Prog >= 5;
     container.innerHTML += `<div class="mission-card"><p class="mission-title">💀 Uccidi 5 Boss</p><p class="mission-reward">Premio: 100 💎</p><div class="mission-progress-bg"><div class="mission-progress-fill" style="width: ${(m1Prog/5)*100}%;"></div></div><p style="font-size:12px; margin-top:0; text-align:right;">${m1Prog}/5</p>${dailyMissions.claim1 ? '<button class="btn-claim" disabled>Completata ✅</button>' : `<button class="btn-claim" ${m1Done ? '' : 'disabled'} onclick="claimMission(1, 100)">Riscuoti</button>`}</div>`;
@@ -135,12 +142,14 @@ function showMissionsModal() {
 function closeMissionsModal() { document.getElementById('missions-modal').style.display = 'none'; }
 function claimMission(id, reward) { if (id === 1) dailyMissions.claim1 = true; if (id === 2) dailyMissions.claim2 = true; if (id === 3) dailyMissions.claim3 = true; totalCrystals += reward; localStorage.setItem('survivorCrystals', totalCrystals); saveDailyMissions(); showMissionsModal(); alert(`Hai ricevuto ${reward} Cristalli! 💎`); }
 
-// --- IMPOSTAZIONI E MENU PRINCIPALE ---
+// IMPOSTAZIONI
 function savePlayerName() { let inputVal = document.getElementById('player-name-input').value.trim(); localStorage.setItem('survivorPlayerName', inputVal); savedName = inputVal; }
-function showSettingsModal() { document.getElementById('stat-enemies').innerText = gameStats.enemiesKilled; document.getElementById('stat-bosses').innerText = gameStats.bossesKilled; document.getElementById('stat-maxlevel').innerText = gameStats.maxLevelReached; document.getElementById('stat-spent').innerText = gameStats.crystalsSpent; document.getElementById('settings-modal').style.display = 'block'; }
+function showSettingsModal() { 
+    closeAllMenuModals();
+    document.getElementById('stat-enemies').innerText = gameStats.enemiesKilled; document.getElementById('stat-bosses').innerText = gameStats.bossesKilled; document.getElementById('stat-maxlevel').innerText = gameStats.maxLevelReached; document.getElementById('stat-spent').innerText = gameStats.crystalsSpent; document.getElementById('settings-modal').style.display = 'block'; 
+}
 function closeSettingsModal() { document.getElementById('settings-modal').style.display = 'none'; }
 function switchSettingsTab(tabName) { document.getElementById('tab-btn-cheat').classList.remove('active'); document.getElementById('tab-btn-stats').classList.remove('active'); document.getElementById('tab-content-cheat').style.display = 'none'; document.getElementById('tab-content-stats').style.display = 'none'; document.getElementById('tab-btn-' + tabName).classList.add('active'); document.getElementById('tab-content-' + tabName).style.display = 'block'; }
-
 function checkCheatCode() {
     let input = document.getElementById('cheat-input').value.trim().toLowerCase(); 
     if (input === "160105") { cheatUnlocked = true; localStorage.setItem('survivorCheat', 'true'); unlockedEquip = []; ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); }); localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip)); charLevels = {0:3, 1:3, 2:3}; localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels)); alert("✔️ CODICE ACCETTATO!\nTutti i personaggi (Lv.3) e gli equipaggiamenti sono sbloccati per sempre."); closeSettingsModal(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI(); } 
@@ -150,7 +159,7 @@ function checkCheatCode() {
     document.getElementById('cheat-input').value = "";
 }
 
-// --- ARMERIA ED EQUIPAGGIAMENTO ---
+// ARMERIA
 function showEquipmentMenu() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('equipment-select').style.display = 'flex'; updateEquipMenuUI(); }
 function updateEquipMenuUI() {
     document.getElementById('menu-crystal-count').innerText = totalCrystals;
@@ -191,7 +200,6 @@ function showCharacterSelect() {
         if (isUnlocked) { card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); }; } container.appendChild(card);
     });
 }
-
 // --- GESTIONE SCHERMATE DI GIOCO ---
 function showMenu() { updateBadges(); gameState = "MENU"; document.getElementById('main-menu').style.display = 'flex'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'none'; document.getElementById('equipment-select').style.display = 'none'; canvas.style.display = 'none'; document.getElementById('player-name-input').value = savedName; }
 function backToMenu() { showMenu(); }
@@ -208,6 +216,7 @@ function triggerGameOver() { paused = true; gameState = "GAMEOVER"; saveGameStat
 
 function startGame() {
     gameState = "PLAYING"; savePlayerName(); activePlayerName = savedName !== "" ? savedName : "Eroe"; sessionCrystals = 0; document.getElementById('crystal-count').innerText = 0;
+    
     let amuletHTML = ""; 
     if (equippedItems.amuleto1) amuletHTML += EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto1).icon;
     if (equippedItems.amuleto2) amuletHTML += " " + EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto2).icon;
@@ -281,6 +290,7 @@ function levelUp() {
 }
 
 function freeUpgrade() { paused = true; let pool = buildUpgradePool(); let shuffled = pool.sort(() => 0.5 - Math.random()); currentChoices = shuffled.slice(0, 3); for(let i=0; i<3; i++) { let btn = document.getElementById('btn'+i); btn.innerHTML = currentChoices[i].name; btn.onclick = () => { document.getElementById('levelup-modal').style.display = 'none'; currentChoices[i].apply(); }; } document.getElementById('levelup-title').innerText = "Cassa: Scelta Gratuita!"; document.getElementById('levelup-title').style.color = "#ffff00"; document.getElementById('levelup-modal').style.display = 'block'; }
+
 function showEpicChestModal() { paused = true; let randomRelic = ["🤖 Mini Me", "🌀 Palle Rotanti", "🛡️ Scudo Rigenerativo"][Math.floor(Math.random()*3)]; let relicAction; if (randomRelic === "🤖 Mini Me") relicAction = () => { player.miniMes.push({x: player.x, y: player.y, fireTimer: 0, burstCount: 0}); closeEpicModal(); }; if (randomRelic === "🌀 Palle Rotanti") relicAction = () => { player.hasOrbs = true; player.orbLevel = (player.orbLevel || 0) + 1; closeEpicModal(); }; if (randomRelic === "🛡️ Scudo Rigenerativo") relicAction = () => { player.maxShield += 50; player.shield = player.maxShield; player.shieldRegen = (player.shieldRegen || 0.2) + 0.15; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeEpicModal(); }; let pool = [ { name: `<span class="upgrade-title" style="color:#bf00ff;">💎 20 Cristalli</span>`, apply: () => { totalCrystals+=20; sessionCrystals+=20; localStorage.setItem('survivorCrystals', totalCrystals); document.getElementById('crystal-count').innerText = sessionCrystals; closeEpicModal(); } }, { name: `<span class="upgrade-title" style="color:#00ffff;">🎁 ${randomRelic}</span>`, apply: relicAction }, { name: `<span class="upgrade-title" style="color:#00ff00;">❤️ Cura Totale & +XP</span>`, apply: () => { player.hp = player.maxHp; updateBarsUI(); xp += xpNeeded * 2; closeEpicModal(); } } ]; for(let i=0; i<3; i++) { let btn = document.getElementById('epic-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('epic-modal').style.display = 'block'; }
 function closeEpicModal() { document.getElementById('epic-modal').style.display = 'none'; paused = false; }
 
@@ -288,7 +298,7 @@ function closeEpicModal() { document.getElementById('epic-modal').style.display 
 function showBossRelicModal() { 
     paused = true; 
     let pool = [ 
-        { name: `<span class="upgrade-title">🌀 Palle Rotanti</span><span class="upgrade-desc">Genera 2 sfere rotanti (Liv. ${player.orbLevel + 1})</span>`, apply: () => { player.hasOrbs = true; player.orbLevel += 1; closeBossModal(); } }, 
+        { name: `<span class="upgrade-title">🌀 Palle Rotanti</span><span class="upgrade-desc">Genera sfere rotanti (Liv. ${player.orbLevel + 1})</span>`, apply: () => { player.hasOrbs = true; player.orbLevel += 1; closeBossModal(); } }, 
         { name: `<span class="upgrade-title">🛡️ Scudo Rigenerativo</span><span class="upgrade-desc">+50 Max HP e ricarica accelerata</span>`, apply: () => { player.maxShield += 50; player.shield = player.maxShield; player.shieldRegen += 0.15; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeBossModal(); } } 
     ]; 
     if (player.miniMes.length < 3) { pool.push({ name: `<span class="upgrade-title">🤖 Mini Me</span><span class="upgrade-desc">Un robottino che spara a raffica</span>`, apply: () => { player.miniMes.push({x: player.x, y: player.y, fireTimer: 0, burstCount: 0}); closeBossModal(); } }); } 
@@ -344,11 +354,11 @@ function update() {
     }
     if (player.iFrames > 0) player.iFrames--;
 
-    // PALLE ROTANTI MULTIPLE
+    // PALLE ROTANTI MULTIPLE (SCALANO COL LIVELLO)
     if (player.hasOrbs && player.orbLevel > 0) { 
         player.orbAngle += 0.05; 
         let orbDist = 100; 
-        let numOrbs = player.orbLevel * 2; // Ogni livello aggiunge 2 sfere
+        let numOrbs = player.orbLevel * 2; // 2 sfere per ogni livello
         
         if (frameCount % 4 === 0) { 
             for(let i=0; i<numOrbs; i++) {
@@ -633,6 +643,17 @@ function update() {
     if (xp >= xpNeeded && !paused) { levelUp(); }
 }
 
+function drawProjectile(b, camX, camY) {
+    ctx.shadowBlur = 10; ctx.shadowColor = b.color; let px = b.x - camX; let py = b.y - camY;
+    if (b.weaponId === 'razzo') { let s = b.size; ctx.fillStyle = b.color; ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s/2, -s/2); ctx.lineTo(-s/2, s/2); ctx.fill(); ctx.restore(); } 
+    else if (b.weaponId === 'bastone') { ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(px, py, b.size, 0, Math.PI*2); ctx.fill(); } 
+    else if (b.weaponId === 'granata') { ctx.fillStyle = "#2a4d20"; ctx.beginPath(); ctx.arc(px, py, b.size, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#eeddaa"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py - b.size*0.8); ctx.lineTo(px + b.size, py - b.size*1.5); ctx.stroke(); } 
+    else if (b.weaponId === 'freezer') { let s = b.size; ctx.fillStyle = b.color; ctx.save(); ctx.translate(px, py); ctx.rotate(frameCount*0.1); ctx.beginPath(); let inner=s/3; let outer=s; for(let i=0;i<8;i++){let rad=(i%2===0)?outer:inner;let a=i*Math.PI/4;ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.fill(); ctx.restore(); } 
+    else if (b.weaponId === 'fucile' || b.weaponId === 'uzi' || b.weaponId === 'cerbottana') { ctx.strokeStyle = b.color; ctx.lineWidth = b.size; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - b.vx*1.5, py - b.vy*1.5); ctx.stroke(); } 
+    else { ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(px, py, b.size, 0, Math.PI*2); ctx.fill(); }
+    ctx.shadowBlur = 0;
+}
+
 function draw() {
     let zoom = window.innerWidth < 768 ? 0.6 : 1; 
     let viewW = canvas.width / zoom; let viewH = canvas.height / zoom;
@@ -682,12 +703,10 @@ function draw() {
         else { ctx.fillStyle = '#8B4513'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); ctx.fillStyle = '#3a1c05'; ctx.fillRect(drawX, drawY + chestHeight/2 - 4, chestWidth, 8); ctx.fillStyle = 'gold'; ctx.fillRect(drawX + chestWidth/2 - 4, drawY + chestHeight/2 - 6, 8, 12); } 
     });
 
-    // Palle Rotanti MULTIPLE in base al livello
+    // DISEGNO PALLE ROTANTI MULTIPLE
     if(player.hasOrbs && player.orbLevel > 0) { 
-        let orbDist = 100; 
-        let numOrbs = player.orbLevel * 2;
+        let orbDist = 100; let numOrbs = player.orbLevel * 2;
         player.orbTrail.forEach(t => { ctx.fillStyle = `rgba(255, 255, 255, ${t.life/60})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, 8, 0, Math.PI*2); ctx.fill(); }); 
-        
         for(let i=0; i<numOrbs; i++) {
             let angleOffset = (Math.PI * 2 / numOrbs) * i;
             let ox = player.x + Math.cos(player.orbAngle + angleOffset) * orbDist; 
@@ -805,5 +824,5 @@ function draw() {
     ctx.restore(); 
 }
 
-// INIZIALIZZA MENU AL CARICAMENTO
+// INIZIALIZZA TUTTO
 showMenu();
