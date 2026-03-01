@@ -3,7 +3,7 @@ const ctx = canvas.getContext('2d');
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize); resize();
 
-// --- SALVATAGGI E MEMORIA (ANTIPROIETTILE) ---
+// --- SALVATAGGI E MEMORIA SICURI ---
 let gameState = "MENU"; let paused = false; let frameCount = 0;
 let cheatUnlocked = localStorage.getItem('survivorCheat') === 'true'; 
 let totalCrystals = parseInt(localStorage.getItem('survivorCrystals')) || 0;
@@ -14,11 +14,6 @@ let charLevels = JSON.parse(localStorage.getItem('survivorCharLevels')) || { 0:1
 
 let gsSaved = JSON.parse(localStorage.getItem('survivorGameStats'));
 let gameStats = gsSaved ? gsSaved : { enemiesKilled: 0, bossesKilled: 0, maxLevelReached: 1, crystalsSpent: 0 };
-if(gameStats.enemiesKilled === undefined) gameStats.enemiesKilled = 0;
-if(gameStats.bossesKilled === undefined) gameStats.bossesKilled = 0;
-if(gameStats.maxLevelReached === undefined) gameStats.maxLevelReached = 1;
-if(gameStats.crystalsSpent === undefined) gameStats.crystalsSpent = 0;
-
 let maxLevelReached = parseInt(localStorage.getItem('survivorMaxLevel')) || 1;
 maxLevelReached = Math.max(maxLevelReached, gameStats.maxLevelReached);
 
@@ -30,15 +25,14 @@ if (dailyMissions.date !== todayStr) { dailyMissions = { date: todayStr, bossesK
 let bpSaved = JSON.parse(localStorage.getItem('survivorBattlePass'));
 let battlePass = bpSaved ? bpSaved : { weekStart: Date.now(), bosses: 0, claims: { 15: false, 30: false, 50: false, 100: false, 150: false } };
 if(!battlePass.claims) battlePass.claims = { 15: false, 30: false, 50: false, 100: false, 150: false };
-if(!battlePass.bosses) battlePass.bosses = 0;
-if (Date.now() - battlePass.weekStart > 604800000) { battlePass = { weekStart: Date.now(), bosses: 0, claims: { 15: false, 30: false, 50: false, 100: false, 150: false } }; localStorage.setItem('survivorBattlePass', JSON.stringify(battlePass)); }
+if(Date.now() - battlePass.weekStart > 604800000) { battlePass = { weekStart: Date.now(), bosses: 0, claims: { 15: false, 30: false, 50: false, 100: false, 150: false } }; localStorage.setItem('survivorBattlePass', JSON.stringify(battlePass)); }
 
 let selectedCharId = 0; let savedName = localStorage.getItem('survivorPlayerName') || ""; let activePlayerName = "Eroe";
 let chestImg = new Image(); chestImg.src = 'chest.png'; let chestEpicImg = new Image(); chestEpicImg.src = 'chestepic.png';
 let isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 let controlMode = isTouchDevice ? 'mobile' : 'pc';
 
-// --- VARIABILI GIOCO ---
+// --- VARIABILI DI GIOCO ---
 let player = {}; let enemies = []; let bullets = []; let beams = []; let explosions = []; let elementalTrails = []; let enemyBullets = []; let gems = []; let rocks = []; let chests = [];
 let xp = 0; let xpNeeded = 15; let level = 1; let currentChoices = []; let pendingWeapon = null; let sessionCrystals = 0;
 let bossArena = { active: false, x: 0, y: 0, radius: 800 }; let rockTelegraphs = [];
@@ -46,6 +40,14 @@ let bossArena = { active: false, x: 0, y: 0, radius: 800 }; let rockTelegraphs =
 let joyX = 0, joyY = 0; let isDraggingJoy = false; let joyStartX = 0, joyStartY = 0; const maxJoyDist = 55; 
 const joyZone = document.getElementById('joystick-zone'); const joyBase = document.getElementById('joystick-base'); const joyStick = document.getElementById('joystick-stick');
 let keys = {}; 
+
+window.addEventListener('keydown', e => { let key = e.key.toLowerCase(); keys[key] = true; if (key === 'p' || e.key === 'Escape') togglePause(); }); 
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+joyZone.addEventListener('touchstart', handleJoyStart, {passive: false}); joyZone.addEventListener('touchmove', handleJoyMove, {passive: false}); joyZone.addEventListener('touchend', handleJoyEnd);
+
+function handleJoyStart(e) { e.preventDefault(); let touch = e.touches[0]; joyStartX = touch.clientX; joyStartY = touch.clientY; joyBase.style.display = 'block'; joyBase.style.left = joyStartX + 'px'; joyBase.style.top = joyStartY + 'px'; isDraggingJoy = true; handleJoyMove(e); }
+function handleJoyMove(e) { if (!isDraggingJoy) return; e.preventDefault(); let touch = e.touches[0]; let dx = touch.clientX - joyStartX; let dy = touch.clientY - joyStartY; let dist = Math.hypot(dx, dy); if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; } joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; joyX = dx / maxJoyDist; joyY = dy / maxJoyDist; }
+function handleJoyEnd(e) { if(e.touches.length === 0) { isDraggingJoy = false; joyBase.style.display = 'none'; joyStick.style.transform = `translate(-50%, -50%)`; joyX = 0; joyY = 0; } }
 
 function distToSegment(px, py, x1, y1, x2, y2) { let l2 = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); if (l2 === 0) return Math.hypot(px - x1, py - y1); let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))); }
 function isPositionFree(x, y, radius) { for (let r of rocks) { if (Math.hypot(x - r.x, y - r.y) < radius + r.size + 10) return false; } return true; }
@@ -89,19 +91,18 @@ const EQUIP_DB = {
     amuleto: [ { id: 'amu_ice', name: 'Amuleto Ghiaccio', desc: 'Scia congelante (3s)', price: 1000, icon: '❄️' }, { id: 'amu_fire', name: 'Amuleto Fuoco', desc: 'Scia incendiaria (3s)', price: 1000, icon: '🔥' }, { id: 'amu_revive', name: 'Amuleto Fenice', desc: 'Rinasci 1 volta (50% HP)', price: 2000, icon: '❤️‍🔥' } ]
 };
 
-// --- FUNZIONI UI, STATISTICHE E MENU ---
-function saveGameStats() { localStorage.setItem('survivorGameStats', JSON.stringify(gameStats)); }
-function saveDailyMissions() { localStorage.setItem('survivorDaily', JSON.stringify(dailyMissions)); updateBadges(); }
-function saveBattlePass() { localStorage.setItem('survivorBattlePass', JSON.stringify(battlePass)); updateBadges(); }
-
+// --- GESTIONE UI E MENU MODALI ---
 function updateBadges() {
-    let missionBadge = document.getElementById('mission-badge');
-    let bpBadge = document.getElementById('bp-badge');
+    let missionBadge = document.getElementById('mission-badge'); let bpBadge = document.getElementById('bp-badge');
     let hasMission = (!dailyMissions.claim1 && dailyMissions.bossesKilled >= 5) || (!dailyMissions.claim2 && dailyMissions.levelsGained >= 10) || (!dailyMissions.claim3 && dailyMissions.itemsBought >= 1);
     if(missionBadge) missionBadge.style.display = hasMission ? 'block' : 'none';
     let hasBp = (!battlePass.claims[15] && battlePass.bosses >= 15) || (!battlePass.claims[30] && battlePass.bosses >= 30) || (!battlePass.claims[50] && battlePass.bosses >= 50) || (!battlePass.claims[100] && battlePass.bosses >= 100) || (!battlePass.claims[150] && battlePass.bosses >= 150);
     if(bpBadge) bpBadge.style.display = hasBp ? 'block' : 'none';
 }
+
+function saveGameStats() { localStorage.setItem('survivorGameStats', JSON.stringify(gameStats)); }
+function saveDailyMissions() { localStorage.setItem('survivorDaily', JSON.stringify(dailyMissions)); updateBadges(); }
+function saveBattlePass() { localStorage.setItem('survivorBattlePass', JSON.stringify(battlePass)); updateBadges(); }
 
 function closeAllMenuModals() {
     document.getElementById('settings-modal').style.display = 'none';
@@ -109,13 +110,9 @@ function closeAllMenuModals() {
     document.getElementById('battlepass-modal').style.display = 'none';
 }
 
-// PASS BATTAGLIA
 function showBattlePassModal() {
     closeAllMenuModals();
-    let container = document.getElementById('bp-tiers-container');
-    document.getElementById('bp-bosses-count').innerText = battlePass.bosses;
-    document.getElementById('bp-progress-fill').style.width = Math.min((battlePass.bosses / 150) * 100, 100) + '%';
-    container.innerHTML = '';
+    let container = document.getElementById('bp-tiers-container'); document.getElementById('bp-bosses-count').innerText = battlePass.bosses; document.getElementById('bp-progress-fill').style.width = Math.min((battlePass.bosses / 150) * 100, 100) + '%'; container.innerHTML = '';
     const tiers = [ { req: 15, rew: 200 }, { req: 30, rew: 400 }, { req: 50, rew: 600 }, { req: 100, rew: 800 }, { req: 150, rew: 1000 } ];
     tiers.forEach(t => {
         let isUnlocked = battlePass.bosses >= t.req; let isClaimed = battlePass.claims[t.req];
@@ -127,7 +124,6 @@ function showBattlePassModal() {
 function closeBattlePassModal() { document.getElementById('battlepass-modal').style.display = 'none'; }
 function claimBattlePass(req, reward) { battlePass.claims[req] = true; totalCrystals += reward; localStorage.setItem('survivorCrystals', totalCrystals); saveBattlePass(); showBattlePassModal(); alert(`Hai ricevuto ${reward} Cristalli dal Pass! 💎`); }
 
-// MISSIONI
 function showMissionsModal() {
     closeAllMenuModals();
     let container = document.getElementById('missions-container'); container.innerHTML = '';
@@ -142,14 +138,11 @@ function showMissionsModal() {
 function closeMissionsModal() { document.getElementById('missions-modal').style.display = 'none'; }
 function claimMission(id, reward) { if (id === 1) dailyMissions.claim1 = true; if (id === 2) dailyMissions.claim2 = true; if (id === 3) dailyMissions.claim3 = true; totalCrystals += reward; localStorage.setItem('survivorCrystals', totalCrystals); saveDailyMissions(); showMissionsModal(); alert(`Hai ricevuto ${reward} Cristalli! 💎`); }
 
-// IMPOSTAZIONI
 function savePlayerName() { let inputVal = document.getElementById('player-name-input').value.trim(); localStorage.setItem('survivorPlayerName', inputVal); savedName = inputVal; }
-function showSettingsModal() { 
-    closeAllMenuModals();
-    document.getElementById('stat-enemies').innerText = gameStats.enemiesKilled; document.getElementById('stat-bosses').innerText = gameStats.bossesKilled; document.getElementById('stat-maxlevel').innerText = gameStats.maxLevelReached; document.getElementById('stat-spent').innerText = gameStats.crystalsSpent; document.getElementById('settings-modal').style.display = 'block'; 
-}
+function showSettingsModal() { closeAllMenuModals(); document.getElementById('stat-enemies').innerText = gameStats.enemiesKilled; document.getElementById('stat-bosses').innerText = gameStats.bossesKilled; document.getElementById('stat-maxlevel').innerText = gameStats.maxLevelReached; document.getElementById('stat-spent').innerText = gameStats.crystalsSpent; document.getElementById('settings-modal').style.display = 'block'; }
 function closeSettingsModal() { document.getElementById('settings-modal').style.display = 'none'; }
 function switchSettingsTab(tabName) { document.getElementById('tab-btn-cheat').classList.remove('active'); document.getElementById('tab-btn-stats').classList.remove('active'); document.getElementById('tab-content-cheat').style.display = 'none'; document.getElementById('tab-content-stats').style.display = 'none'; document.getElementById('tab-btn-' + tabName).classList.add('active'); document.getElementById('tab-content-' + tabName).style.display = 'block'; }
+
 function checkCheatCode() {
     let input = document.getElementById('cheat-input').value.trim().toLowerCase(); 
     if (input === "160105") { cheatUnlocked = true; localStorage.setItem('survivorCheat', 'true'); unlockedEquip = []; ['elmo', 'corazza', 'amuleto'].forEach(cat => { EQUIP_DB[cat].forEach(item => unlockedEquip.push(item.id)); }); localStorage.setItem('survivorUnlockedEquip', JSON.stringify(unlockedEquip)); charLevels = {0:3, 1:3, 2:3}; localStorage.setItem('survivorCharLevels', JSON.stringify(charLevels)); alert("✔️ CODICE ACCETTATO!\nTutti i personaggi (Lv.3) e gli equipaggiamenti sono sbloccati per sempre."); closeSettingsModal(); if(document.getElementById('equipment-select').style.display === 'flex') updateEquipMenuUI(); } 
@@ -159,7 +152,6 @@ function checkCheatCode() {
     document.getElementById('cheat-input').value = "";
 }
 
-// ARMERIA
 function showEquipmentMenu() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('equipment-select').style.display = 'flex'; updateEquipMenuUI(); }
 function updateEquipMenuUI() {
     document.getElementById('menu-crystal-count').innerText = totalCrystals;
@@ -200,23 +192,20 @@ function showCharacterSelect() {
         if (isUnlocked) { card.onclick = () => { selectedCharId = char.id; showCharacterSelect(); }; } container.appendChild(card);
     });
 }
-// --- GESTIONE SCHERMATE DI GIOCO ---
+// --- GESTIONE SCHERMATE DI GIOCO E AVVIO ---
 function showMenu() { updateBadges(); gameState = "MENU"; document.getElementById('main-menu').style.display = 'flex'; document.getElementById('character-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-ui').style.display = 'none'; document.getElementById('equipment-select').style.display = 'none'; canvas.style.display = 'none'; document.getElementById('player-name-input').value = savedName; }
 function backToMenu() { showMenu(); }
-
 function togglePause() { 
     if (gameState !== "PLAYING") return; 
     let lvlModal = document.getElementById('levelup-modal').style.display; let bossModal = document.getElementById('boss-modal').style.display; let repModal = document.getElementById('replace-modal').style.display; let epicModal = document.getElementById('epic-modal').style.display;
     if (lvlModal === 'block' || bossModal === 'block' || repModal === 'block' || epicModal === 'block') return; 
     let pauseModal = document.getElementById('pause-modal'); if (paused) { paused = false; pauseModal.style.display = 'none'; } else { paused = true; pauseModal.style.display = 'block'; } 
 }
-
 function surrender() { document.getElementById('pause-modal').style.display = 'none'; player.hp = 0; updateBarsUI(); triggerGameOver(); }
 function triggerGameOver() { paused = true; gameState = "GAMEOVER"; saveGameStats(); saveDailyMissions(); saveBattlePass(); document.getElementById('run-crystals').innerText = sessionCrystals; document.getElementById('final-level').innerText = level; document.getElementById('game-ui').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'flex'; }
 
 function startGame() {
     gameState = "PLAYING"; savePlayerName(); activePlayerName = savedName !== "" ? savedName : "Eroe"; sessionCrystals = 0; document.getElementById('crystal-count').innerText = 0;
-    
     let amuletHTML = ""; 
     if (equippedItems.amuleto1) amuletHTML += EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto1).icon;
     if (equippedItems.amuleto2) amuletHTML += " " + EQUIP_DB.amuleto.find(x => x.id === equippedItems.amuleto2).icon;
@@ -235,6 +224,8 @@ function startGame() {
     
     for(let i = 0; i < 15; i++) { let valid = false; let attempts = 0; let rx, ry, rSize; while(!valid && attempts < 10) { let angle = Math.random() * Math.PI * 2; let dist = 300 + Math.random() * 1500; rx = Math.cos(angle) * dist; ry = Math.sin(angle) * dist; rSize = 25 + Math.random() * 20; valid = isPositionFree(rx, ry, rSize); attempts++; } if (valid) rocks.push({ x: rx, y: ry, size: rSize, hp: 30 }); }
     giveWeapon(WEAPONS_DB.pistola); updateBarsUI(); document.getElementById('lvl').innerText = level; document.getElementById('shield-ui').style.display = 'none'; 
+    
+    // QUESTO È IL COMANDO CHE AVVIAVA LO SCHERMO NERO SE MANCAVA!
     requestAnimationFrame(gameLoop);
 }
 
@@ -294,7 +285,6 @@ function freeUpgrade() { paused = true; let pool = buildUpgradePool(); let shuff
 function showEpicChestModal() { paused = true; let randomRelic = ["🤖 Mini Me", "🌀 Palle Rotanti", "🛡️ Scudo Rigenerativo"][Math.floor(Math.random()*3)]; let relicAction; if (randomRelic === "🤖 Mini Me") relicAction = () => { player.miniMes.push({x: player.x, y: player.y, fireTimer: 0, burstCount: 0}); closeEpicModal(); }; if (randomRelic === "🌀 Palle Rotanti") relicAction = () => { player.hasOrbs = true; player.orbLevel = (player.orbLevel || 0) + 1; closeEpicModal(); }; if (randomRelic === "🛡️ Scudo Rigenerativo") relicAction = () => { player.maxShield += 50; player.shield = player.maxShield; player.shieldRegen = (player.shieldRegen || 0.2) + 0.15; document.getElementById('shield-ui').style.display = 'flex'; updateBarsUI(); closeEpicModal(); }; let pool = [ { name: `<span class="upgrade-title" style="color:#bf00ff;">💎 20 Cristalli</span>`, apply: () => { totalCrystals+=20; sessionCrystals+=20; localStorage.setItem('survivorCrystals', totalCrystals); document.getElementById('crystal-count').innerText = sessionCrystals; closeEpicModal(); } }, { name: `<span class="upgrade-title" style="color:#00ffff;">🎁 ${randomRelic}</span>`, apply: relicAction }, { name: `<span class="upgrade-title" style="color:#00ff00;">❤️ Cura Totale & +XP</span>`, apply: () => { player.hp = player.maxHp; updateBarsUI(); xp += xpNeeded * 2; closeEpicModal(); } } ]; for(let i=0; i<3; i++) { let btn = document.getElementById('epic-btn'+i); btn.innerHTML = pool[i].name; btn.onclick = pool[i].apply; } document.getElementById('epic-modal').style.display = 'block'; }
 function closeEpicModal() { document.getElementById('epic-modal').style.display = 'none'; paused = false; }
 
-// --- IL NUOVO MODALE BOSS CON POTENZIAMENTI CUMULABILI ---
 function showBossRelicModal() { 
     paused = true; 
     let pool = [ 
@@ -321,13 +311,41 @@ function handleNewWeapon(weaponData) {
 function confirmReplace(slotIndex) { player.weapons[slotIndex] = { ...pendingWeapon, level: 1, currentDamage: pendingWeapon.baseDamage, currentFireRate: pendingWeapon.fireRate, fireTimer: 0 }; updateWeaponsUI(); document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
 function cancelReplace() { document.getElementById('replace-modal').style.display = 'none'; finishUpgrade(); }
 function finishUpgrade() { paused = false; }
-// --- MOTORE DI GIOCO (UPDATE E DRAW) ---
+
+function handleEnemyDeath(e, ei) {
+    gameStats.enemiesKilled++; 
+    if (gameStats.enemiesKilled % 50 === 0) saveGameStats();
+
+    if (e.type === 'miniboss') { 
+        gameStats.bossesKilled++; saveGameStats();
+        dailyMissions.bossesKilled++; saveDailyMissions();
+        battlePass.bosses++; saveBattlePass(); // AGGIORNAMENTO DEL PASS BATTAGLIA!
+
+        chests.push({ x: e.x, y: e.y, size: 35, isSpecial: true, isEpic: false, isBossChest: true }); 
+        showItemFeedback("🏆 CASSA SUPREMA!", "gold"); 
+        for(let c=0; c<15; c++) gems.push({ x: e.x + Math.random()*80-40, y: e.y + Math.random()*80-40, isCrystal: true }); 
+        bossArena.active = false; 
+    } 
+    else { if (Math.random() < 0.02) { gems.push({ x: e.x, y: e.y, isCrystal: true }); } else { gems.push({ x: e.x, y: e.y, isSuper: false }); } } 
+    if (ei > -1) enemies.splice(ei, 1);
+}
+// --- IL CUORE DEL GIOCO: LOOP, UPDATE E DRAW ---
+
+function gameLoop() { 
+    if (gameState !== "PLAYING") return; 
+    if (!paused) { 
+        update(); 
+        draw(); 
+    } 
+    requestAnimationFrame(gameLoop); 
+}
+
 function update() {
     frameCount++; let dx = 0; let dy = 0;
     if (controlMode === 'pc') { if (keys['w'] || keys['arrowup']) dy -= 1; if (keys['s'] || keys['arrowdown']) dy += 1; if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1; if (dx !== 0 && dy !== 0) { let len = Math.hypot(dx, dy); dx /= len; dy /= len; } } else { dx = joyX; dy = joyY; }
     let moveX = dx * player.speed; let moveY = dy * player.speed; let canMoveX = true; let canMoveY = true;
     
-    // MURI ARENA BOSS
+    // MURI ARENA BOSS E SASSI IN CADUTA
     if (bossArena.active) {
         if (Math.hypot((player.x + moveX) - bossArena.x, player.y - bossArena.y) > bossArena.radius - player.size) canMoveX = false;
         if (Math.hypot(player.x - bossArena.x, (player.y + moveY) - bossArena.y) > bossArena.radius - player.size) canMoveY = false;
@@ -358,7 +376,7 @@ function update() {
     if (player.hasOrbs && player.orbLevel > 0) { 
         player.orbAngle += 0.05; 
         let orbDist = 100; 
-        let numOrbs = player.orbLevel * 2; // 2 sfere per ogni livello
+        let numOrbs = player.orbLevel * 2; // Ogni livello aggiunge 2 sfere!
         
         if (frameCount % 4 === 0) { 
             for(let i=0; i<numOrbs; i++) {
@@ -703,7 +721,7 @@ function draw() {
         else { ctx.fillStyle = '#8B4513'; ctx.fillRect(drawX, drawY, chestWidth, chestHeight); ctx.fillStyle = '#3a1c05'; ctx.fillRect(drawX, drawY + chestHeight/2 - 4, chestWidth, 8); ctx.fillStyle = 'gold'; ctx.fillRect(drawX + chestWidth/2 - 4, drawY + chestHeight/2 - 6, 8, 12); } 
     });
 
-    // DISEGNO PALLE ROTANTI MULTIPLE
+    // PALLE ROTANTI MULTIPLE
     if(player.hasOrbs && player.orbLevel > 0) { 
         let orbDist = 100; let numOrbs = player.orbLevel * 2;
         player.orbTrail.forEach(t => { ctx.fillStyle = `rgba(255, 255, 255, ${t.life/60})`; ctx.beginPath(); ctx.arc(t.x - camX, t.y - camY, 8, 0, Math.PI*2); ctx.fill(); }); 
@@ -824,5 +842,5 @@ function draw() {
     ctx.restore(); 
 }
 
-// INIZIALIZZA TUTTO
+// INIZIALIZZA TUTTO AL CARICAMENTO
 showMenu();
