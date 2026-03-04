@@ -602,9 +602,9 @@ function update() {
             let valid = false; let attempts = 0; let ex, ey; 
             while(!valid && attempts < 10) { let angle = Math.random() * Math.PI * 2; let radius = Math.max(canvas.width, canvas.height) / 1.5; ex = player.x + Math.cos(angle) * radius; ey = player.y + Math.sin(angle) * radius; valid = isPositionFree(ex, ey, 22); attempts++; } 
             if(valid) { 
-                let type = 'melee'; let color = 'red'; let hp = 10 + (level * 5); let speed = 1.5 + Math.random(); let size = 12; 
-                if (level >= 2 && Math.random() < 0.25) { type = 'shooter'; color = 'purple'; speed = 0.8; hp = hp * 0.8; } 
-                else if (level >= 4 && Math.random() < 0.15) { type = 'tank'; color = 'darkred'; hp = hp * 2; speed = 0.6; size = 22; } 
+                let type = 'melee'; let color = '#cc2233'; let hp = 10 + (level * 5); let speed = 1.5 + Math.random(); let size = 12; 
+                if (level >= 2 && Math.random() < 0.25) { type = 'shooter'; color = '#9922aa'; speed = 0.8; hp = hp * 0.8; } 
+                else if (level >= 4 && Math.random() < 0.15) { type = 'tank'; color = '#8b1a1a'; hp = hp * 2; speed = 0.6; size = 22; } 
                 enemies.push({ x: ex, y: ey, hp: hp, maxHp: hp, speed: speed, originalSpeed: speed, size: size, type: type, color: color, fireTimer: 0, hitTimer: 0, frozenTimer: 0, burnTimer: 0, poisonTimer: 0, electrifiedTimer: 0, dead: false }); 
             } 
         } 
@@ -739,7 +739,7 @@ function draw() {
     let camX = player.x - viewW / 2; let camY = player.y - viewH / 2;
 
     // Sfondo void con gradiente
-    ctx.fillStyle = '#0a0508'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#100d06'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save(); ctx.scale(zoom, zoom); 
 
     // Griglia void ambrata
@@ -899,7 +899,7 @@ function draw() {
         else if (e.poisonTimer > 0) currentFill = "#aa44aa"; 
         else if (e.burnTimer > 0) currentFill = "#ff8800";
         
-        let armColor = '#5a0000'; if(e.type === 'miniboss') armColor = '#8b6900'; else if(e.type === 'tank') armColor = '#3a0000'; else if(e.type === 'shooter') armColor = '#380044'; 
+        let armColor = '#7a1a1a'; if(e.type === 'miniboss') armColor = '#b8860b'; else if(e.type === 'tank') armColor = '#5a0a0a'; else if(e.type === 'shooter') armColor = '#5a1a6a'; 
         if(e.type === 'miniboss') { ctx.shadowBlur = 20; ctx.shadowColor = '#ffaa00'; } 
         let armOffset = Math.sin(frameCount * 0.05 + e.x) * (e.size * 0.5); let bodyW = e.size * 0.8; let bodyH = e.size * 1.2; let armW = e.size * 1.0; let armH = e.size * 1.8; 
         ctx.fillStyle = armColor; ctx.fillRect(bx - bodyW/2 - armW + 2, by - bodyH/2 + armOffset, armW, armH); ctx.fillRect(bx + bodyW/2 - 2, by - bodyH/2 - armOffset, armW, armH); 
@@ -959,7 +959,7 @@ function draw() {
     let eColor = equippedItems.elmo ? eqColors[equippedItems.elmo.split('_')[1]] : null;
     let cColor = equippedItems.corazza ? eqColors[equippedItems.corazza.split('_')[1]] : null;
 
-    ctx.fillStyle = '#00cc55'; 
+    ctx.fillStyle = '#ffd700'; 
     if (player.charId === 0) { 
         ctx.fillRect(screenCenterX - pBodyW/2, screenCenterY - pBodyH/2 + 5, pBodyW, pBodyH); 
     } else if (player.charId === 1) { 
@@ -972,7 +972,7 @@ function draw() {
     
     if (cColor) { ctx.fillStyle = cColor; ctx.fillRect(screenCenterX - pBodyW*0.6, screenCenterY - pBodyH*0.2, pBodyW*1.2, pBodyH*0.6); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(screenCenterX - pBodyW*0.6, screenCenterY - pBodyH*0.2, pBodyW*1.2, pBodyH*0.6); }
 
-    ctx.fillStyle = '#00cc55'; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2, player.size * 0.6, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = 'rgba(255,170,0,0.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.pickupRange, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2, player.size * 0.6, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = 'rgba(255,200,50,0.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY, player.pickupRange, 0, Math.PI*2); ctx.stroke();
     
     if (eColor && player.charId !== 3) { ctx.fillStyle = eColor; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2 - 2, player.size * 0.65, Math.PI, Math.PI*2); ctx.fill(); ctx.fillRect(screenCenterX - player.size*0.65, screenCenterY - pBodyH/2 - 2, player.size*1.3, 6); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(screenCenterX, screenCenterY - pBodyH/2 - 2, player.size * 0.65, Math.PI, Math.PI*2); ctx.stroke(); }
     ctx.globalAlpha = 1;
@@ -1052,4 +1052,3 @@ function bindButtons() {
 
 showMenu();
 bindButtons();
-
