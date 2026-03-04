@@ -1,6 +1,6 @@
 // =========================================
 // file: data.js
-// ==========================================
+// =========================================
 
 export const WEAPON_MODELS = {
     pistola: (ctx, s, c) => { ctx.fillStyle = "#bbbbbb"; ctx.fillRect(0, -s/4, s*1.5, s/2); ctx.fillStyle = "#444444"; ctx.fillRect(0, s/4, s/2, s/1.5); },
