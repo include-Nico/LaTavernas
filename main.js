@@ -1052,3 +1052,4 @@ function bindButtons() {
 
 showMenu();
 bindButtons();
+
