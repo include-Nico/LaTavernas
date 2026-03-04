@@ -3,46 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Geometric Survivor</title>
+    <title>VOID RUNNER</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="main-menu" class="fullscreen-menu">
-        <h1 class="game-title">GEOMETRIC<br>SURVIVOR</h1>
-        <input type="text" id="player-name-input" placeholder="INSERISCI NOME..." maxlength="12" onkeyup="savePlayerName()" onblur="savePlayerName()">
-        <button class="menu-btn" onclick="startGame()">▶️ GIOCA</button>
-        <button class="menu-btn" onclick="showCharacterSelect()">👥 PERSONAGGI</button>
-        <button class="menu-btn" onclick="showEquipmentMenu()" style="border-color: #bf00ff; box-shadow: 0 5px 15px rgba(191, 0, 255, 0.3);">🎒 EQUIPAGGIAMENTO</button>
+        <div class="menu-bg-particles" id="particles"></div>
+        <div class="menu-logo-wrap">
+            <div class="logo-glyph">⬡</div>
+            <h1 class="game-title">VOID<br>RUNNER</h1>
+            <p class="game-subtitle">— Survive. Ascend. Conquer. —</p>
+        </div>
+        <input type="text" id="player-name-input" placeholder="NOME GUERRIERO..." maxlength="12">
+        <button class="menu-btn" id="btn-gioca"><span class="btn-icon">▶</span> INIZIA BATTAGLIA</button>
+        <button class="menu-btn" id="btn-personaggi"><span class="btn-icon">☽</span> EROI</button>
+        <button class="menu-btn btn-arcane" id="btn-equip"><span class="btn-icon">✦</span> ARSENALE</button>
         
-        <button class="top-icon-btn" onclick="showBattlePassModal()" style="right: 155px;">
-            🏆<div id="bp-badge" class="notification-badge" style="display: none;"></div>
+        <button class="top-icon-btn" id="btn-battlepass" style="right: 155px;">
+            ⚔<div id="bp-badge" class="notification-badge" style="display: none;"></div>
         </button>
-        <button class="top-icon-btn" onclick="showMissionsModal()" style="right: 85px;">
+        <button class="top-icon-btn" id="btn-missions" style="right: 85px;">
             📜<div id="mission-badge" class="notification-badge" style="display: none;"></div>
         </button>
-        <button class="top-icon-btn" onclick="showSettingsModal()" style="right: 15px;">⚙️</button>
+        <button class="top-icon-btn" id="btn-settings" style="right: 15px;">⚙</button>
     </div>
 
     <div id="equipment-select" class="fullscreen-menu" style="display: none;">
-        <button class="back-btn" onclick="backToMenu()">⬅</button>
-        <h2>Armeria <span style="color:#bf00ff; text-shadow: 0 0 10px #bf00ff;">💎 <span id="menu-crystal-count">0</span></span></h2>
+        <button class="back-btn" id="btn-back-equip">⬅</button>
+        <h2>Arsenale <span class="crystal-label">⬡ <span id="menu-crystal-count">0</span></span></h2>
         <div id="double-amulet-container" style="margin-bottom: 15px;"></div>
         <div class="equip-section" id="equip-container"></div>
     </div>
 
     <div id="character-select" class="fullscreen-menu" style="display: none;">
-        <button class="back-btn" onclick="backToMenu()">⬅</button>
-        <h2>Scegli il tuo Eroe <span style="color:#bf00ff; font-size:20px;">(💎 <span id="char-crystal-count">0</span>)</span></h2>
+        <button class="back-btn" id="btn-back-char">⬅</button>
+        <h2>Scegli il tuo Eroe <span class="crystal-label" style="font-size:16px;">⬡ <span id="char-crystal-count">0</span></span></h2>
         <div id="char-cards-container" class="char-container"></div>
     </div>
 
-    <div id="game-over-screen" class="fullscreen-menu" style="display: none; background: rgba(20, 0, 0, 0.9);">
-        <h1 style="color: #ff3300; font-size: 50px; margin-bottom: 10px;">GAME OVER</h1>
-        <h2 style="color: #fff;">Sopravvissuto fino al Livello <span id="final-level" style="color: #00ffff;">1</span></h2>
-        <h3 style="color: #bf00ff;">Cristalli Trovati: 💎 <span id="run-crystals">0</span></h3>
-        <button class="menu-btn" onclick="startGame()">🔄 RIGIOCA</button>
-        <button class="menu-btn" style="background: #555;" onclick="backToMenu()">Torna al Menu</button>
+    <div id="game-over-screen" class="fullscreen-menu" style="display: none; background: rgba(10, 0, 0, 0.95);">
+        <div class="death-skull">☠</div>
+        <h1 class="gameover-title">ANNIENTATO</h1>
+        <h2 class="gameover-sub">Caduto al Livello <span id="final-level" style="color: var(--amber);">1</span></h2>
+        <h3 style="color: var(--arcane);">Cristalli del Vuoto: ⬡ <span id="run-crystals">0</span></h3>
+        <button class="menu-btn" id="btn-rigioca">↺ RINASCI</button>
+        <button class="menu-btn btn-danger" id="btn-back-gameover">Abbandona il Vuoto</button>
     </div>
 
     <div id="game-ui" style="display: none;">
@@ -51,77 +60,111 @@
                 <div>Livello: <span id="lvl">1</span></div>
                 <div class="bars-container">
                     <div class="bar-row">
-                        <span class="bar-icon" style="color:red;">❤</span>
+                        <span class="bar-icon" style="color:#ff3322;">♥</span>
                         <div class="hp-bar-bg"><div id="hp-bar-fill"></div></div>
                         <span id="amulet-icon-ui" style="font-size: 24px; margin-left: 10px; text-shadow: 0 0 10px #fff; white-space: nowrap;"></span>
                     </div>
                     <div class="bar-row" id="shield-ui">
-                        <span class="bar-icon" style="color:cyan;">🛡️</span>
+                        <span class="bar-icon" style="color:var(--ember);">◈</span>
                         <div class="shield-bar-bg"><div id="shield-bar-fill"></div></div>
                     </div>
                 </div>
             </div>
-            <div id="crystal-ui" style="color:#bf00ff; font-size: 24px; font-weight:bold; text-shadow:0 0 10px #bf00ff; margin-top: 10px;">💎 <span id="crystal-count">0</span></div>
+            <div id="crystal-ui">⬡ <span id="crystal-count">0</span></div>
             <div id="weapons-ui"></div>
         </div>
-        <button id="pause-btn" onclick="togglePause()">I I</button>
+        <button id="pause-btn">⏸</button>
         <div id="xp-bar-container"><div id="xp-bar"></div></div>
         <div id="joystick-zone" style="display: none;"><div id="joystick-base"><div id="joystick-stick"></div></div></div>
     </div>
     
     <canvas id="gameCanvas" style="display: none;"></canvas>
 
+    <!-- MODALS -->
     <div id="battlepass-modal" class="modal">
-        <h2 style="color: #ffaa00; margin-top:0;">Pass Settimanale</h2>
-        <p style="color:#aaa; font-size:12px; margin-bottom: 20px;">Sconfiggi i Boss per sbloccare ricompense!</p>
-        <div style="background:#111; padding:15px; border-radius:10px; text-align: left;">
-            <p style="color:#fff; font-weight:bold; text-align: center;">Boss Sconfitti: <span id="bp-bosses-count" style="color:gold; font-size:24px;">0</span> / 150</p>
-            <div class="mission-progress-bg"><div id="bp-progress-fill" class="mission-progress-fill" style="background: linear-gradient(to right, #ffaa00, #ffdd00);"></div></div>
+        <div class="modal-header-deco"></div>
+        <h2 class="modal-title-amber">⚔ Patto del Guerriero</h2>
+        <p class="modal-sub">Sconfiggi i Titani per sbloccare ricompense!</p>
+        <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:8px; text-align: left; border: 1px solid rgba(255,160,0,0.15);">
+            <p style="color:#fff; font-weight:bold; text-align: center;">Titani Sconfitti: <span id="bp-bosses-count" style="color:var(--amber); font-size:24px;">0</span> / 150</p>
+            <div class="mission-progress-bg"><div id="bp-progress-fill" class="mission-progress-fill" style="background: linear-gradient(to right, var(--ember), var(--amber));"></div></div>
             <div id="bp-tiers-container" style="margin-top: 15px; max-height: 40vh; overflow-y: auto;"></div>
         </div>
-        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00; margin-top:20px;" onclick="closeBattlePassModal()"><span class="upgrade-title">Chiudi</span></button>
+        <button class="upgrade-btn btn-close-red" id="btn-close-bp"><span class="upgrade-title">Chiudi</span></button>
     </div>
 
     <div id="settings-modal" class="modal">
+        <div class="modal-header-deco"></div>
         <div class="tab-container">
-            <button class="tab-btn active" id="tab-btn-cheat" onclick="switchSettingsTab('cheat')">Codici</button>
-            <button class="tab-btn" id="tab-btn-stats" onclick="switchSettingsTab('stats')">Statistiche</button>
+            <button class="tab-btn active" id="tab-btn-cheat">Codici</button>
+            <button class="tab-btn" id="tab-btn-stats">Statistiche</button>
         </div>
-        
         <div id="tab-content-cheat">
-            <p style="color:#aaa; font-size:14px;">Inserisci un codice segreto:</p>
-            <input type="text" id="cheat-input" placeholder="Codice...">
-            <button class="upgrade-btn" onclick="checkCheatCode()"><span class="upgrade-title">Conferma</span></button>
+            <p style="color:rgba(255,200,100,0.6); font-size:14px;">Inserisci un codice segreto:</p>
+            <input type="text" id="cheat-input" placeholder="Codice arcano...">
+            <button class="upgrade-btn" id="btn-cheat-confirm"><span class="upgrade-title">Conferma</span></button>
         </div>
-
         <div id="tab-content-stats" style="display:none; text-align: left; padding: 10px; color:#fff;">
-            <p>💀 Nemici Uccisi: <span id="stat-enemies" style="color:#00ffff; font-weight:bold;">0</span></p>
-            <p>👹 Boss Sconfitti: <span id="stat-bosses" style="color:gold; font-weight:bold;">0</span></p>
-            <p>⬆️ Livello Max: <span id="stat-maxlevel" style="color:#00ff00; font-weight:bold;">1</span></p>
-            <p>💎 Cristalli Spesi: <span id="stat-spent" style="color:#bf00ff; font-weight:bold;">0</span></p>
+            <p>💀 Nemici Eliminati: <span id="stat-enemies" style="color:var(--amber); font-weight:bold;">0</span></p>
+            <p>👹 Titani Sconfitti: <span id="stat-bosses" style="color:var(--ember); font-weight:bold;">0</span></p>
+            <p>⬆ Livello Massimo: <span id="stat-maxlevel" style="color:var(--gold-dim); font-weight:bold;">1</span></p>
+            <p>⬡ Cristalli Spesi: <span id="stat-spent" style="color:var(--arcane); font-weight:bold;">0</span></p>
         </div>
-
-        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00; margin-top:20px;" onclick="closeSettingsModal()"><span class="upgrade-title">Chiudi</span></button>
+        <button class="upgrade-btn btn-close-red" id="btn-close-settings"><span class="upgrade-title">Chiudi</span></button>
     </div>
 
     <div id="missions-modal" class="modal">
-        <h2 style="color: gold; margin-top:0;">Missioni Giornaliere</h2>
-        <p style="color:#aaa; font-size:12px; margin-bottom: 20px;">Si resettano a mezzanotte</p>
+        <div class="modal-header-deco"></div>
+        <h2 class="modal-title-amber">☽ Contratti Giornalieri</h2>
+        <p class="modal-sub">Si resettano a mezzanotte</p>
         <div id="missions-container"></div>
-        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00; margin-top:20px;" onclick="closeMissionsModal()"><span class="upgrade-title">Chiudi</span></button>
+        <button class="upgrade-btn btn-close-red" id="btn-close-missions"><span class="upgrade-title">Chiudi</span></button>
     </div>
 
     <div id="pause-modal" class="modal">
-        <h2 style="color: #fff; margin-top:0; font-size: 35px;">PAUSA</h2>
-        <button class="upgrade-btn" onclick="togglePause()"><span class="upgrade-title">Riprendi</span></button>
-        <button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="surrender()"><span class="upgrade-title">Arrenditi</span></button>
+        <div class="modal-header-deco"></div>
+        <h2 style="color: var(--amber); margin-top:0; font-size: 32px; font-family: var(--fh); letter-spacing: 4px;">PAUSA</h2>
+        <button class="upgrade-btn" id="btn-resume"><span class="upgrade-title">↺ Riprendi</span></button>
+        <button class="upgrade-btn btn-close-red" id="btn-surrender"><span class="upgrade-title">✗ Arrenditi</span></button>
     </div>
 
-    <div id="levelup-modal" class="modal"><h2 id="levelup-title" style="color: #00ffff; margin-top:0;">Livello Superato!</h2><p style="color:#aaa;">Scegli il tuo potenziamento:</p><button class="upgrade-btn" id="btn0"></button><button class="upgrade-btn" id="btn1"></button><button class="upgrade-btn" id="btn2"></button></div>
-    <div id="replace-modal" class="modal"><h2 style="color: #ff3300; margin-top:0;">Inventario Pieno!</h2><p>Scartare un'arma per prendere <br><span id="new-weapon-name" style="color:#00ffff; font-weight:bold; font-size:24px;"></span>?</p><button class="upgrade-btn" id="rep-btn0" onclick="confirmReplace(0)"></button><button class="upgrade-btn" id="rep-btn1" onclick="confirmReplace(1)"></button><button class="upgrade-btn" id="rep-btn2" onclick="confirmReplace(2)" style="display:none;"></button><button class="upgrade-btn" style="background: linear-gradient(#800, #500); border-color: #f00;" onclick="cancelReplace()"><span class="upgrade-title">Rifiuta Arma</span></button></div>
-    <div id="boss-modal" class="modal" style="border-color: #ffd700;"><h2 style="color: #ffd700; margin-top:0; text-shadow: 0 0 10px #ffd700;">CASSA DEL BOSS!</h2><p style="color:#ccc;">Scegli una Reliquia Suprema:</p><button class="upgrade-btn boss-btn" id="boss-btn0"></button><button class="upgrade-btn boss-btn" id="boss-btn1"></button><button class="upgrade-btn boss-btn" id="boss-btn2"></button></div>
-    <div id="epic-modal" class="modal" style="border-color: #ff00ff; box-shadow: 0 10px 40px rgba(255,0,255,0.4);"><h2 style="color: #ff00ff; margin-top:0; text-shadow: 0 0 10px #ff00ff;">✨ CASSA EPICA! ✨</h2><p style="color:#ccc;">Scegli la tua ricompensa segreta:</p><button class="upgrade-btn" id="epic-btn0" style="border-color: #ff00ff;"></button><button class="upgrade-btn" id="epic-btn1" style="border-color: #ff00ff;"></button><button class="upgrade-btn" id="epic-btn2" style="border-color: #ff00ff;"></button></div>
+    <div id="levelup-modal" class="modal">
+        <div class="modal-header-deco gold"></div>
+        <h2 id="levelup-title" style="color: var(--amber); margin-top:0;">⬡ Ascensione!</h2>
+        <p class="modal-sub">Scegli il tuo potenziamento:</p>
+        <button class="upgrade-btn" id="btn0"></button>
+        <button class="upgrade-btn" id="btn1"></button>
+        <button class="upgrade-btn" id="btn2"></button>
+    </div>
 
-    <script src="game.js"></script>
+    <div id="replace-modal" class="modal">
+        <div class="modal-header-deco red"></div>
+        <h2 style="color: var(--ember); margin-top:0;">Inventario Pieno!</h2>
+        <p>Scartare un'arma per prendere <br><span id="new-weapon-name" style="color:var(--amber); font-weight:bold; font-size:22px;"></span>?</p>
+        <button class="upgrade-btn" id="rep-btn0"></button>
+        <button class="upgrade-btn" id="rep-btn1"></button>
+        <button class="upgrade-btn" id="rep-btn2" style="display:none;"></button>
+        <button class="upgrade-btn btn-close-red" id="btn-cancel-replace"><span class="upgrade-title">✗ Rifiuta Arma</span></button>
+    </div>
+
+    <div id="boss-modal" class="modal boss-modal-theme">
+        <div class="modal-header-deco amber-boss"></div>
+        <h2 style="color: var(--amber); margin-top:0; text-shadow: 0 0 18px var(--amber); font-family: var(--fh);">⚔ BOTTINO DEL TITANO!</h2>
+        <p class="modal-sub">Scegli una Reliquia Suprema:</p>
+        <button class="upgrade-btn boss-btn" id="boss-btn0"></button>
+        <button class="upgrade-btn boss-btn" id="boss-btn1"></button>
+        <button class="upgrade-btn boss-btn" id="boss-btn2"></button>
+    </div>
+
+    <div id="epic-modal" class="modal epic-modal-theme">
+        <div class="modal-header-deco arcane"></div>
+        <h2 style="color: var(--arcane); margin-top:0; text-shadow: 0 0 18px var(--arcane); font-family: var(--fh);">✦ FORZIERE ARCANO! ✦</h2>
+        <p class="modal-sub">Scegli la tua ricompensa segreta:</p>
+        <button class="upgrade-btn epic-upgrade-btn" id="epic-btn0"></button>
+        <button class="upgrade-btn epic-upgrade-btn" id="epic-btn1"></button>
+        <button class="upgrade-btn epic-upgrade-btn" id="epic-btn2"></button>
+    </div>
+
+    <script type="module" src="main.js"></script>
 </body>
 </html>
