@@ -5,7 +5,8 @@
 import { WEAPON_MODELS, WEAPONS_DB, CHARACTERS, EQUIP_DB } from './data.js';
 import { 
     updateBadges, showMenu, updateEquipMenuUI, showCharacterSelect, 
-    updateBarsUI, updateWeaponsUI, showItemFeedback, closeSettingsModal, showBattlePassModal, showMissionsModal
+    updateBarsUI, updateWeaponsUI, showItemFeedback, closeSettingsModal, showBattlePassModal, showMissionsModal,
+    showEquipmentMenu, showSettingsModal, backToMenu, closeBattlePassModal, closeMissionsModal, switchSettingsTab
 } from './ui.js';
 
 export const canvas = document.getElementById('gameCanvas'); 
